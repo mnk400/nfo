@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Created by Manik
+# on Aug 6, 2020
+
+function screenres {
+	xdpyinfo | awk '/dimensions/{print $2}'
+}
+
+screenres
