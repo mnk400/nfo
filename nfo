@@ -3,16 +3,33 @@
 # Created by Manik
 # on Aug 6, 2020
 
-function screenres {
-	timeout 2s bash -c "xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/'" 
+function osname {
+	os_t=$(uname -o)
+	if [ $os_t == 'GNU/Linux' ]; then
+		if [ -f /etc/os-release ]; then
+			. /etc/os-release
+			echo $NAME $VERSION_ID
+		else
+			echo "Can't read /etc/os-release"
+		fi
+	else
+		echo "OS family not supported yet"
+	fi
 }
 
-function osname {
-	if [ -f /etc/os-release ]; then
-		. /etc/os-release
-		echo $NAME $VERSION_ID
-	else
-		echo "Can't cant /etc/os-release"
+function total_mem {
+	totalk=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
+	var=1024
+	echo $((totalk/var)) "MiB"
+}
+
+function cpu_info {
+	lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g'
+}
+
+function wsl_check {
+	if grep -q microsoft /proc/version; then
+	echo "(WSL)"
 	fi
 }
 
@@ -23,6 +40,14 @@ function cur_shell {
 
 function up_time {
 	uptime -p | cut -d " " -f2- 
+}
+
+function totalpackages {
+	dpkg-query -f '${binary:Package}\n' -W | wc -l
+}
+
+function screenres {
+	timeout 2s bash -c "xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/'" 
 }
 
 #Defining colours
@@ -76,14 +101,18 @@ read -r -d '' keyboard <<- EOM
 \`----------------------------------------------------'
 EOM
 
+
 function print_out {
 	printf "$nfo_isometric\n"
 	echo $USER"@"$HOSTNAME
 	echo -e "${RED}-${NC} ${MAGENTA}-${NC} ${YELLOW}-${NC} ${GREEN}-${NC} ${CYAN}-${NC} ${BLUE}-${NC} "
-	echo "OS:		$(osname)"
+	echo "OS:		$(osname) $(wsl_check)"
 	echo "Resolution: 	$(screenres)"
 	echo "Uptime:		$(up_time)"
 	echo "Shell:		$(cur_shell)"
+	echo "Packages:	$(totalpackages)"
+	echo "Memory:		$(total_mem)"
+	echo "CPU:		$(cpu_info)"
 }
 
 print_out
