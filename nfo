@@ -4,7 +4,87 @@
 # on Aug 6, 2020
 
 function screenres {
-	xdpyinfo | awk '/dimensions/{print $2}'
+	timeout 2s bash -c "xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/'" 
 }
 
-screenres
+function osname {
+	if [ -f /etc/os-release ]; then
+		. /etc/os-release
+		echo $NAME $VERSION_ID
+	else
+		echo "Can't cant /etc/os-release"
+	fi
+}
+
+function cur_shell {
+	curs=$($SHELL --version)
+	echo $curs | cut -d' ' -f1-2
+}
+
+function up_time {
+	uptime -p | cut -d " " -f2- 
+}
+
+#Defining colours
+RED='\033[0;31m'
+MAGENTA='\033[0;35m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+read -r -d '' name <<- EOM
+• ▌ ▄ ·.  ▐ ▄ ▄ •▄
+·██ ▐███▪•█▌▐██▌▄▌▪
+▐█ ▌▐▌▐█·▐█▐▐▌▐▀▀▄·
+██ ██▌▐█▌██▐█▌▐█.█▌
+▀▀  █▪▀▀▀▀▀ █▪·▀  ▀
+EOM
+
+read -r -d '' file <<- EOM
+.----.______
+|nfo        |
+|    ___________
+|   /          /
+|  /          /
+| /          /
+|/__________/
+EOM
+
+read -r -d '' nfo_isometric <<- EOM
+⠀⠀⠀⠀___       ___       ___   
+   /\__\     /\  \     /\  \  
+  /:| _|_   /::\  \   /::\  \ 
+ /::|/\__\ /::\:\__\ /:/\:\__\
+
+ \/|::/  / \/\:\/__/ \:\/:/  /
+   |:/  /     \/__/   \::/  / 
+   \/__/               \/__/ 
+EOM
+
+
+read -r -d '' keyboard <<- EOM	
+,----------------------------------------------------,
+| [][][][][]  [][][][][]  [][][][]  [][__]  [][][][] |
+|                                                    |
+|  [][][][][][][][][][][][][][_]    [][][]  [][][][] |
+|  [_][][][][][][][][][][][][][ |   [][][]  [][][][] |
+| [][_][][][][][][][][][][][][]||     []    [][][][] |
+| [__][][][][][][][][][][][][__]    [][][]  [][][]|| |
+|   [__][________________][__]              [__][]|| |
+\`----------------------------------------------------'
+EOM
+
+function print_out {
+	printf "$nfo_isometric\n"
+	echo $USER"@"$HOSTNAME
+	echo -e "${RED}-${NC} ${MAGENTA}-${NC} ${YELLOW}-${NC} ${GREEN}-${NC} ${CYAN}-${NC} ${BLUE}-${NC} "
+	echo "OS:		$(osname)"
+	echo "Resolution: 	$(screenres)"
+	echo "Uptime:		$(up_time)"
+	echo "Shell:		$(cur_shell)"
+}
+
+print_out
+
