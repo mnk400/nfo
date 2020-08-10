@@ -3,6 +3,9 @@
 # Created by Manik
 # on Aug 6, 2020
 
+# Loading config
+. config.conf
+
 function osname {
 	os_t=$(uname -o)
 	if [ $os_t == 'GNU/Linux' ]; then
@@ -50,14 +53,7 @@ function screenres {
 	timeout 2s bash -c "xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/'" 
 }
 
-#Defining colours
-RED='\033[0;31m'
-MAGENTA='\033[0;35m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+
 
 read -r -d '' name <<- EOM
 • ▌ ▄ ·.  ▐ ▄ ▄ •▄
@@ -81,8 +77,7 @@ read -r -d '' nfo_isometric <<- EOM
 ⠀⠀⠀⠀___       ___       ___   
    /\__\     /\  \     /\  \  
   /:| _|_   /::\  \   /::\  \ 
- /::|/\__\ /::\:\__\ /:/\:\__\
-
+ /::|/\__\ /::\:\__\ /:/\:\__\\
  \/|::/  / \/\:\/__/ \:\/:/  /
    |:/  /     \/__/   \::/  / 
    \/__/               \/__/ 
@@ -103,16 +98,27 @@ EOM
 
 
 function print_out {
-	printf "$nfo_isometric\n"
-	echo $USER"@"$HOSTNAME
-	echo -e "${RED}-${NC} ${MAGENTA}-${NC} ${YELLOW}-${NC} ${GREEN}-${NC} ${CYAN}-${NC} ${BLUE}-${NC} "
-	echo "OS:		$(osname) $(wsl_check)"
-	echo "Resolution: 	$(screenres)"
-	echo "Uptime:		$(up_time)"
-	echo "Shell:		$(cur_shell)"
-	echo "Packages:	$(totalpackages)"
-	echo "Memory:		$(total_mem)"
-	echo "CPU:		$(cpu_info)"
+	if [ $ART == 'nfo' ]; then
+		printf "$nfo_isometric\n\n"
+	elif [ $ART == 'key' ]; then
+		printf "$keyboard\n\n"
+	elif [ $ART == 'file' ]; then
+		printf "$file\n\n"
+	elif [ $ART == 'name' ]; then
+		printf "$name\n\n"
+	fi
+
+	
+	echo -e "${MAGENTA}"$USER"${NC}""@""${MAGENTA}"$HOSTNAME"${NC}"
+	echo -e "${RED}▄${NC} ${MAGENTA}▄${NC} ${YELLOW}▄${NC} ${GREEN}▄${NC} ${CYAN}▄${NC} ${BLUE}▄${NC} "
+	echo -e "${RED}▀${NC} ${MAGENTA}▀${NC} ${YELLOW}▀${NC} ${GREEN}▀${NC} ${CYAN}▀${NC} ${BLUE}▀${NC} "
+	echo -e "${MAGENTA}OS:${NC}		$(osname) $(wsl_check)"
+	echo -e "${MAGENTA}Resolution:${NC} 	$(screenres)"
+	echo -e "${MAGENTA}Uptime:${NC}		$(up_time)"
+	echo -e "${MAGENTA}Shell:${NC}		$(cur_shell)"
+	echo -e "${MAGENTA}Packages:${NC}	$(totalpackages)"
+	echo -e "${MAGENTA}Memory:${NC}		$(total_mem)"
+	echo -e "${MAGENTA}CPU:${NC}		$(cpu_info)"
 }
 
 print_out
