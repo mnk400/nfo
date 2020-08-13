@@ -6,6 +6,32 @@
 # Loading config
 . config.conf
 
+# Define colours
+RED='\033[0;31m'
+MAGENTA='\033[0;35m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+if [ $TINT == 'Magenta' ]; then
+		tint_shade=$MAGENTA
+elif [ $TINT == 'Red' ]; then
+		echo "lmao"
+		tint_shade=$RED
+elif [ $TINT == 'Green' ]; then
+		tint_shade=$GREEN
+elif [ $TINT == 'Yellow' ]; then
+		tint_shade=$YELLOW
+elif [ $TINT == 'Blue' ]; then
+		tint_shade=$BLUE
+elif [ $TINT == 'Cyan' ]; then
+		tint_shade=$CYAN
+else
+		tint_shade=$NC
+fi
+
 function osname {
 	os_t=$(uname -o)
 	if [ $os_t == 'GNU/Linux' ]; then
@@ -109,17 +135,16 @@ function print_out {
 	fi
 
 	
-	echo -e "${MAGENTA}"$USER"${NC}""@""${MAGENTA}"$HOSTNAME"${NC}"
+	echo -e "${tint_shade}"$USER"${NC}""@""${tint_shade}"$HOSTNAME"${NC}"
 	echo -e "${RED}▄${NC} ${MAGENTA}▄${NC} ${YELLOW}▄${NC} ${GREEN}▄${NC} ${CYAN}▄${NC} ${BLUE}▄${NC} "
 	echo -e "${RED}▀${NC} ${MAGENTA}▀${NC} ${YELLOW}▀${NC} ${GREEN}▀${NC} ${CYAN}▀${NC} ${BLUE}▀${NC} "
-	echo -e "${MAGENTA}OS:${NC}		$(osname) $(wsl_check)"
-	echo -e "${MAGENTA}Resolution:${NC} 	$(screenres)"
-	echo -e "${MAGENTA}Uptime:${NC}		$(up_time)"
-	echo -e "${MAGENTA}Shell:${NC}		$(cur_shell)"
-	echo -e "${MAGENTA}Packages:${NC}	$(totalpackages)"
-	echo -e "${MAGENTA}Memory:${NC}		$(total_mem)"
-	echo -e "${MAGENTA}CPU:${NC}		$(cpu_info)"
+	echo -e "${tint_shade}OS:${NC}		$(osname) $(wsl_check)"
+	echo -e "${tint_shade}Resolution:${NC} 	$(screenres)"
+	echo -e "${tint_shade}Uptime:${NC}		$(up_time)"
+	echo -e "${tint_shade}Shell:${NC}		$(cur_shell)"
+	echo -e "${tint_shade}Packages:${NC}	$(totalpackages)"
+	echo -e "${tint_shade}Memory:${NC}		$(total_mem)"
+	echo -e "${tint_shade}CPU:${NC}		$(cpu_info)"
 }
 
 print_out
-
