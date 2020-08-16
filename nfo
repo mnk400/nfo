@@ -6,6 +6,9 @@
 # Loading config
 . config.conf
 
+# Loading artwork
+source art.sh
+
 # Define colours
 RED='\033[0;31m'
 MAGENTA='\033[0;35m'
@@ -53,7 +56,8 @@ function total_mem {
 }
 
 function cpu_info {
-	lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g'
+	cpu=$(lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g')
+
 }
 
 function wsl_check {
@@ -86,50 +90,10 @@ function screenres {
 
 
 
-read -r -d '' name <<- EOM
-• ▌ ▄ ·.  ▐ ▄ ▄ •▄
-·██ ▐███▪•█▌▐██▌▄▌▪
-▐█ ▌▐▌▐█·▐█▐▐▌▐▀▀▄·
-██ ██▌▐█▌██▐█▌▐█.█▌
-▀▀  █▪▀▀▀▀▀ █▪·▀  ▀
-EOM
 
-read -r -d '' file <<- EOM
-.----.______
-|nfo        |
-|    ___________
-|   /          /
-|  /          /
-| /          /
-|/__________/
-EOM
-
-read -r -d '' nfo_isometric <<- EOM
-⠀⠀⠀⠀___       ___       ___   
-   /\__\     /\  \     /\  \  
-  /:| _|_   /::\  \   /::\  \ 
- /::|/\__\ /::\:\__\ /:/\:\__\\
- \/|::/  / \/\:\/__/ \:\/:/  /
-   |:/  /     \/__/   \::/  / 
-   \/__/               \/__/ 
-EOM
-
-
-read -r -d '' keyboard <<- EOM	
-,----------------------------------------------------,
-| [][][][][]  [][][][][]  [][][][]  [][__]  [][][][] |
-|                                                    |
-|  [][][][][][][][][][][][][][_]    [][][]  [][][][] |
-|  [_][][][][][][][][][][][][][ |   [][][]  [][][][] |
-| [][_][][][][][][][][][][][][]||     []    [][][][] |
-| [__][][][][][][][][][][][][__]    [][][]  [][][]|| |
-|   [__][________________][__]              [__][]|| |
-\`----------------------------------------------------'
-EOM
 
 
 function print_out {
-	echo ""
 
 	if [ $ART == 'nfo' ]; then
 		printf "$nfo_isometric\n\n"
@@ -139,6 +103,8 @@ function print_out {
 		printf "$file\n\n"
 	elif [ $ART == 'name' ]; then
 		printf "$name\n\n"
+	elif [ $ART == 'toilet' ]; then
+		toilet -f future --gay "$toiet_msg"
 	fi
 
 	
