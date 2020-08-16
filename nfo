@@ -57,7 +57,7 @@ function total_mem {
 
 function cpu_info {
 	cpu=$(lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g')
-
+	echo "$cpu"
 }
 
 function wsl_check {
