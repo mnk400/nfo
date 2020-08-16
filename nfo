@@ -76,7 +76,12 @@ function totalpackages {
 }
 
 function screenres {
-	timeout 2s bash -c "xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/'" 
+	res=$(timeout 2s bash -c "xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/'")
+	if [ -z "$res" ]; then
+    	echo "Couldn't find out"
+	else
+		echo $res
+	fi
 }
 
 
@@ -124,6 +129,8 @@ EOM
 
 
 function print_out {
+	echo ""
+
 	if [ $ART == 'nfo' ]; then
 		printf "$nfo_isometric\n\n"
 	elif [ $ART == 'key' ]; then
