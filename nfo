@@ -3,11 +3,23 @@
 # Created by Manik
 # on Aug 6, 2020
 
-# Loading config
-. config.conf
+# Setting path for config and artwork
+confg="/home/${USER}/.config/nfo/config.conf"
+artwork="/home/${USER}/.config/nfo/art.sh"
 
-# Loading artwork
-source art.sh
+if [ -f $confg ]; then
+	. $confg
+else
+	echo "Config file not found"
+	exit
+fi
+
+if [ -f $artwork ]; then
+	source $artwork
+else
+	echo "Artwork file not found"
+	exit
+fi
 
 # Define colours
 RED='\033[0;31m'

@@ -2,6 +2,10 @@
 
 A simple fetch program with some ASCII art.
 
+Use ```make install``` or ```make uninstall``` to install/uninstall the script.
+
+Config file can be found in .config folder in user directory.
+
 ```
 ╺┳╸╻ ╻╻┏━┓   ╻┏━┓   ┏┓╻┏━╸┏━┓
  ┃ ┣━┫┃┗━┓   ┃┗━┓   ┃┗┫┣╸ ┃ ┃
