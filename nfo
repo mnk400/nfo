@@ -29,6 +29,9 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
+# Text styling
+bold=$(tput bold)
+normal=$(tput sgr0)
 
 if [ $TINT == 'Magenta' ]; then
 		tint_shade=$MAGENTA
@@ -59,6 +62,11 @@ function osname {
 	else
 		echo "OS family not supported yet"
 	fi
+}
+
+function linuxver {
+	ver=$(uname -r)
+	echo $ver
 }
 
 function total_mem {
@@ -120,16 +128,17 @@ function print_out {
 	fi
 
 	
-	echo -e "${tint_shade}"$USER"${NC}""@""${tint_shade}"$HOSTNAME"${NC}"
+	echo -e "${tint_shade}${bold}"$USER"${NC}""@""${tint_shade}${bold}"$HOSTNAME"${NC}"
 	echo -e "${RED}▄${NC} ${MAGENTA}▄${NC} ${YELLOW}▄${NC} ${GREEN}▄${NC} ${CYAN}▄${NC} ${BLUE}▄${NC} "
 	echo -e "${RED}▀${NC} ${MAGENTA}▀${NC} ${YELLOW}▀${NC} ${GREEN}▀${NC} ${CYAN}▀${NC} ${BLUE}▀${NC} "
-	echo -e "${tint_shade}OS:${NC}		$(osname) $(wsl_check)"
-	echo -e "${tint_shade}Resolution:${NC} 	$(screenres)"
-	echo -e "${tint_shade}Uptime:${NC}		$(up_time)"
-	echo -e "${tint_shade}Shell:${NC}		$(cur_shell)"
-	echo -e "${tint_shade}Packages:${NC}	$(totalpackages)"
-	echo -e "${tint_shade}Memory:${NC}		$(total_mem)"
-	echo -e "${tint_shade}CPU:${NC}		$(cpu_info)"
+	echo -e "${tint_shade}${bold}OS:${normal}${NC}		$(osname) $(wsl_check)"
+	echo -e "${tint_shade}${bold}Linux:${normal}${NC}		$(linuxver)"
+	echo -e "${tint_shade}${bold}Resolution:${normal}${NC} 	$(screenres)"
+	echo -e "${tint_shade}${bold}Uptime:${normal}${NC}		$(up_time)"
+	echo -e "${tint_shade}${bold}Shell:${normal}${NC}		$(cur_shell)"
+	echo -e "${tint_shade}${bold}Packages:${normal}${NC}	$(totalpackages)"
+	echo -e "${tint_shade}${bold}Memory:${normal}${NC}		$(total_mem)"
+	echo -e "${tint_shade}${bold}CPU:${normal}${NC}		$(cpu_info)"
 }
 
 print_out
