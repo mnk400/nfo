@@ -4,8 +4,8 @@
 # on Aug 6, 2020
 
 # Setting path for config and artwork
-# confg="/home/${USER}/.config/nfo/config.conf"
-confg="config.conf"
+confg="/home/${USER}/.config/nfo/config.conf"
+# confg="config.conf"
 artwork="/home/${USER}/.config/nfo/art.sh"
 
 if [ -f $confg ]; then
@@ -115,32 +115,61 @@ function screenres {
 }
 
 
-function print_out {
-
-	if [ $ART == 'nfo' ]; then
-		printf "$nfo_isometric\n\n"
-	elif [ $ART == 'key' ]; then
-		printf "$keyboard\n\n"
-	elif [ $ART == 'file' ]; then
-		printf "$file\n\n"
-	elif [ $ART == 'name' ]; then
-		printf "$name\n\n"
-	elif [ $ART == 'toilet' ]; then
-		toilet -f future --gay "$toiet_msg"
+function nfo {
+	if [ $1 == 'Art' ]; then
+		if [ $ART == 'nfo' ]; then
+			printf "$nfo_isometric\n\n"
+		elif [ $ART == 'key' ]; then
+			printf "$keyboard\n\n"
+		elif [ $ART == 'file' ]; then
+			printf "$file\n\n"
+		elif [ $ART == 'name' ]; then
+			printf "$name\n\n"
+		elif [ $ART == 'toilet' ]; then
+			toilet -f future --gay "$toiet_msg"
+		fi
+	fi
+	
+	if [ $1 == 'Host' ]; then
+		echo -e "${tint_shade}${bold}"$USER"${NC}""@""${tint_shade}${bold}"$HOSTNAME"${NC}"
 	fi
 
-	
-	echo -e "${tint_shade}${bold}"$USER"${NC}""@""${tint_shade}${bold}"$HOSTNAME"${NC}"
-	echo -e "${RED}▄${NC} ${MAGENTA}▄${NC} ${YELLOW}▄${NC} ${GREEN}▄${NC} ${CYAN}▄${NC} ${BLUE}▄${NC} "
-	echo -e "${RED}▀${NC} ${MAGENTA}▀${NC} ${YELLOW}▀${NC} ${GREEN}▀${NC} ${CYAN}▀${NC} ${BLUE}▀${NC} "
+	if [ $1 == 'Colors' ]; then
+		echo -e "${RED}▄${NC} ${MAGENTA}▄${NC} ${YELLOW}▄${NC} ${GREEN}▄${NC} ${CYAN}▄${NC} ${BLUE}▄${NC} "
+		echo -e "${RED}▀${NC} ${MAGENTA}▀${NC} ${YELLOW}▀${NC} ${GREEN}▀${NC} ${CYAN}▀${NC} ${BLUE}▀${NC} "
+	fi
+
+	if [ $1 == 'OS' ]; then
 	echo -e "${tint_shade}${bold}OS:${normal}${NC}		$(osname) $(wsl_check)"
+	fi
+
+	if [ $1 == 'Kernel' ]; then
 	echo -e "${tint_shade}${bold}Linux:${normal}${NC}		$(linuxver)"
+	fi
+
+	if [ $1 == 'Resolution' ]; then
 	echo -e "${tint_shade}${bold}Resolution:${normal}${NC} 	$(screenres)"
+	fi
+
+	if [ $1 == 'Uptime' ]; then
 	echo -e "${tint_shade}${bold}Uptime:${normal}${NC}		$(up_time)"
+	fi
+
+	if [ $1 == 'Shell' ]; then
 	echo -e "${tint_shade}${bold}Shell:${normal}${NC}		$(cur_shell)"
+	fi
+
+	if [ $1 == 'Packages' ]; then
 	echo -e "${tint_shade}${bold}Packages:${normal}${NC}	$(totalpackages)"
+	fi
+
+	if [ $1 == 'Memory' ]; then
 	echo -e "${tint_shade}${bold}Memory:${normal}${NC}		$(total_mem)"
+	fi
+
+	if [ $1 == 'CPU' ]; then
 	echo -e "${tint_shade}${bold}CPU:${normal}${NC}		$(cpu_info)"
+	fi
 }
 
 print_out
