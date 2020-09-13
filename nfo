@@ -4,7 +4,8 @@
 # on Aug 6, 2020
 
 # Setting path for config and artwork
-confg="/home/${USER}/.config/nfo/config.conf"
+# confg="/home/${USER}/.config/nfo/config.conf"
+confg="config.conf"
 artwork="/home/${USER}/.config/nfo/art.sh"
 
 if [ -f $confg ]; then
@@ -29,14 +30,19 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
+
 # Text styling
-bold=$(tput bold)
+if [ "$ascii_bold" == "True" ]; then
+	bold=$(tput bold)
+else
+	bold=$()
+fi
+
 normal=$(tput sgr0)
 
 if [ $TINT == 'Magenta' ]; then
 		tint_shade=$MAGENTA
 elif [ $TINT == 'Red' ]; then
-		echo "lmao"
 		tint_shade=$RED
 elif [ $TINT == 'Green' ]; then
 		tint_shade=$GREEN
@@ -107,10 +113,6 @@ function screenres {
 		echo $res
 	fi
 }
-
-
-
-
 
 
 function print_out {
