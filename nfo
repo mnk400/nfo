@@ -56,34 +56,35 @@ else
 		tint_shade=$NC
 fi
 
-function osname {
+function os {
 	os_t=$(uname -o)
 	if [ $os_t == 'GNU/Linux' ]; then
 		if [ -f /etc/os-release ]; then
 			. /etc/os-release
-			echo $NAME $VERSION_ID
+			res="$NAME $VERSION_ID"
 		else
-			echo "Can't read /etc/os-release"
+			res="Can't read /etc/os-release"
 		fi
 	else
-		echo "OS family not supported yet"
+		res="OS family not supported yet"
 	fi
+	echo -e "${tint_shade}${bold}OS:${normal}${NC}		$res $(wsl_check)"
 }
 
-function linuxver {
+function kernel {
 	ver=$(uname -r)
-	echo $ver
+	echo -e "${tint_shade}${bold}Linux:${normal}${NC}		$ver"
 }
 
-function total_mem {
+function total_memory {
 	totalk=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
 	var=1024
-	echo $((totalk/var)) "MiB"
+	echo -e "${tint_shade}${bold}Memory:${normal}${NC}		$((totalk/var)) MiB"
 }
 
-function cpu_info {
-	cpu=$(lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g')
-	echo "$cpu"
+function cpu {
+	res=$(lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g')
+	echo -e "${tint_shade}${bold}CPU:${normal}${NC}		$res"
 }
 
 function wsl_check {
@@ -92,84 +93,55 @@ function wsl_check {
 	fi
 }
 
-function cur_shell {
-	curs=$($SHELL --version)
-	echo $curs | cut -d' ' -f1-2
+function current_shell {
+	res=$($SHELL --version | cut -d' ' -f1-2)
+	echo -e "${tint_shade}${bold}Shell:${normal}${NC}		$res"
 }
 
 function up_time {
-	uptime -p | cut -d " " -f2- 
+	res=$(uptime -p | cut -d " " -f2- )
+	echo -e "${tint_shade}${bold}Uptime:${normal}${NC}		$res"
 }
 
 function totalpackages {
-	dpkg-query -f '${binary:Package}\n' -W | wc -l
+	res=$(dpkg-query -f '${binary:Package}\n' -W | wc -l)
+	echo -e "${tint_shade}${bold}Packages:${normal}${NC}	$res"
 }
 
-function screenres {
+function resolution {
 	res=$(timeout 2s bash -c "xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/'")
 	if [ -z "$res" ]; then
-    	echo "Couldn't find out"
-	else
-		echo $res
+    	res="Couldn't find out"
+	fi
+
+	echo -e "${tint_shade}${bold}Resolution:${normal}${NC} 	$res"
+}
+
+function art {
+	if [ $ART == 'nfo' ]; then
+		printf "$nfo_isometric\n\n"
+	elif [ $ART == 'key' ]; then
+		printf "$keyboard\n\n"
+	elif [ $ART == 'file' ]; then
+		printf "$file\n\n"
+	elif [ $ART == 'name' ]; then
+		printf "$name\n\n"
+	elif [ $ART == 'toilet' ]; then
+		toilet -f future --gay "$toiet_msg"
 	fi
 }
 
+function host {
+	echo -e "${tint_shade}${bold}"$USER"${NC}""@""${tint_shade}${bold}"$HOSTNAME"${NC}"
+}
+
+function colors {
+	echo -e "${RED}▄${NC} ${MAGENTA}▄${NC} ${YELLOW}▄${NC} ${GREEN}▄${NC} ${CYAN}▄${NC} ${BLUE}▄${NC} "
+	echo -e "${RED}▀${NC} ${MAGENTA}▀${NC} ${YELLOW}▀${NC} ${GREEN}▀${NC} ${CYAN}▀${NC} ${BLUE}▀${NC} "
+}
 
 function nfo {
-	if [ $1 == 'Art' ]; then
-		if [ $ART == 'nfo' ]; then
-			printf "$nfo_isometric\n\n"
-		elif [ $ART == 'key' ]; then
-			printf "$keyboard\n\n"
-		elif [ $ART == 'file' ]; then
-			printf "$file\n\n"
-		elif [ $ART == 'name' ]; then
-			printf "$name\n\n"
-		elif [ $ART == 'toilet' ]; then
-			toilet -f future --gay "$toiet_msg"
-		fi
-	fi
-	
-	if [ $1 == 'Host' ]; then
-		echo -e "${tint_shade}${bold}"$USER"${NC}""@""${tint_shade}${bold}"$HOSTNAME"${NC}"
-	fi
-
-	if [ $1 == 'Colors' ]; then
-		echo -e "${RED}▄${NC} ${MAGENTA}▄${NC} ${YELLOW}▄${NC} ${GREEN}▄${NC} ${CYAN}▄${NC} ${BLUE}▄${NC} "
-		echo -e "${RED}▀${NC} ${MAGENTA}▀${NC} ${YELLOW}▀${NC} ${GREEN}▀${NC} ${CYAN}▀${NC} ${BLUE}▀${NC} "
-	fi
-
-	if [ $1 == 'OS' ]; then
-	echo -e "${tint_shade}${bold}OS:${normal}${NC}		$(osname) $(wsl_check)"
-	fi
-
-	if [ $1 == 'Kernel' ]; then
-	echo -e "${tint_shade}${bold}Linux:${normal}${NC}		$(linuxver)"
-	fi
-
-	if [ $1 == 'Resolution' ]; then
-	echo -e "${tint_shade}${bold}Resolution:${normal}${NC} 	$(screenres)"
-	fi
-
-	if [ $1 == 'Uptime' ]; then
-	echo -e "${tint_shade}${bold}Uptime:${normal}${NC}		$(up_time)"
-	fi
-
-	if [ $1 == 'Shell' ]; then
-	echo -e "${tint_shade}${bold}Shell:${normal}${NC}		$(cur_shell)"
-	fi
-
-	if [ $1 == 'Packages' ]; then
-	echo -e "${tint_shade}${bold}Packages:${normal}${NC}	$(totalpackages)"
-	fi
-
-	if [ $1 == 'Memory' ]; then
-	echo -e "${tint_shade}${bold}Memory:${normal}${NC}		$(total_mem)"
-	fi
-
-	if [ $1 == 'CPU' ]; then
-	echo -e "${tint_shade}${bold}CPU:${normal}${NC}		$(cpu_info)"
-	fi
+	echo -e "$($1)"
 }
 
 print_out
