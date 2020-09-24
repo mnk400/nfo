@@ -132,7 +132,11 @@ function art {
 }
 
 function host {
-	echo -e "${tint_shade}${bold}"$USER"${NC}""@""${tint_shade}${bold}"$HOSTNAME"${NC}"
+	if [ $toilet_host == 'True' ]; then
+		toilet -f future --gay "$USER@$HOSTNAME"
+	else
+		echo -e "${tint_shade}${bold}"$USER"${NC}""@""${tint_shade}${bold}"$HOSTNAME"${NC}"
+	fi
 }
 
 function colors {
