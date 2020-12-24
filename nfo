@@ -3,10 +3,16 @@
 # Created by Manik
 # on Aug 6, 2020
 
-# Setting path for config and artwork
-confg="/home/${USER}/.config/nfo/config.conf"
-# confg="config.conf"
-artwork="/home/${USER}/.config/nfo/art.sh"
+if [ "$1" == "--dev" ]; then
+	echo "dev mode"
+	confg="config.conf"
+	artwork="art.sh"	
+else
+	# Setting path for config and artwork
+	confg="/home/${USER}/.config/nfo/config.conf"
+	# confg="config.conf"
+	artwork="/home/${USER}/.config/nfo/art.sh"
+fi
 
 if [ -f $confg ]; then
 	. $confg
@@ -21,6 +27,11 @@ else
 	echo "Artwork file not found"
 	exit
 fi
+
+# OS Detect
+os=$(uname)
+
+echo $os
 
 # Define colours
 RED='\033[0;31m'
@@ -57,14 +68,16 @@ else
 fi
 
 function os {
-	os_t=$(uname -o)
-	if [ $os_t == 'GNU/Linux' ]; then
+	if [ $os == 'Linux' ]; then
 		if [ -f /etc/os-release ]; then
 			. /etc/os-release
 			res="$NAME $VERSION_ID"
 		else
 			res="Can't read /etc/os-release"
 		fi
+	elif [ $os == 'Darwin' ]; then
+		ver=$(sw_vers -productVersion)
+		res="macOS $ver"
 	else
 		res="OS family not supported yet"
 	fi
@@ -72,8 +85,16 @@ function os {
 }
 
 function kernel {
-	ver=$(uname -r)
-	echo -e "${tint_shade}${bold}Linux:${normal}${NC}		$ver"
+	if [ $os == 'Linux' ]; then
+		ver=$(uname -r)
+	elif [ $os == 'Darwin' ]; then
+		ver=$(uname -r)
+		ver="Darwin Kernel $ver"
+	else
+		ver="Not supported yet"
+	fi	
+
+	echo -e "${tint_shade}${bold}Kernel${normal}${NC}		$ver"
 }
 
 function total_memory {
@@ -83,7 +104,13 @@ function total_memory {
 }
 
 function cpu {
-	res=$(lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g')
+	if [ $os == 'Linux' ]; then
+		res=$(lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g')
+	elif [ $os == 'Darwin' ]; then
+		res=$(sysctl -a | grep machdep.cpu.brand_string)
+	else
+		res=$("Unknown")
+	fi
 	echo -e "${tint_shade}${bold}CPU:${normal}${NC}		$res"
 }
 
