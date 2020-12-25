@@ -31,8 +31,6 @@ fi
 # OS Detect
 os=$(uname)
 
-echo $os
-
 # Define colours
 RED='\033[0;31m'
 MAGENTA='\033[0;35m'
@@ -98,7 +96,11 @@ function kernel {
 }
 
 function total_memory {
-	totalk=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
+	if [ $os == 'Linux' ]; then
+		totalk=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
+	elif [ $os == 'Darwin' ]; then
+		totalk="Not Supported Yet"
+	fi
 	var=1024
 	echo -e "${tint_shade}${bold}Memory:${normal}${NC}		$((totalk/var)) MiB"
 }
@@ -107,7 +109,7 @@ function cpu {
 	if [ $os == 'Linux' ]; then
 		res=$(lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g')
 	elif [ $os == 'Darwin' ]; then
-		res=$(sysctl -a | grep machdep.cpu.brand_string)
+		res=$(sysctl -a | grep machdep.cpu.brand_string | cut -c25-)
 	else
 		res=$("Unknown")
 	fi
@@ -126,21 +128,35 @@ function current_shell {
 }
 
 function up_time {
-	res=$(uptime -p | cut -d " " -f2- )
+	if [ $os == 'Linux' ]; then
+		res=$(uptime -p | cut -d " " -f2- )
+	elif [ $os == 'Darwin' ]; then
+		res="Not Supported Yet"
+	fi
 	echo -e "${tint_shade}${bold}Uptime:${normal}${NC}		$res"
 }
 
 function totalpackages {
-	res=$(dpkg-query -f '${binary:Package}\n' -W | wc -l)
+	if [ $os == 'Linux' ]; then
+		res=$(dpkg-query -f '${binary:Package}\n' -W | wc -l)
+	elif [ $os == 'Darwin' ]; then
+	        res="Not Supported on macOS"
+	fi	
 	echo -e "${tint_shade}${bold}Packages:${normal}${NC}	$res"
 }
 
 function resolution {
-	res=$(timeout 2s bash -c "xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/'")
-	if [ -z "$res" ]; then
-    	res="Couldn't find out"
+	if [ $os == 'Linux' ]; then
+		res=$(timeout 2s bash -c "xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/'")
+		if [ -z "$res" ]; then
+    			res="Couldn't find out"
+		fi
+	elif [ $os == 'Darwin' ]; then
+		res=$(system_profiler SPDisplaysDataType | grep Resolution | cut -c11-)
+	else
+		res="OS not supported"
 	fi
-
+	
 	echo -e "${tint_shade}${bold}Resolution:${normal}${NC} 	$res"
 }
 
