@@ -97,19 +97,18 @@ function kernel {
 
 function total_memory {
 	if [ $os == 'Linux' ]; then
-		totalk=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
+		totalk=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)/1024
 	elif [ $os == 'Darwin' ]; then
-		totalk=0
+		totalk=$(system_profiler SPHardwareDataType | grep "Memory:" | cut -c15- | cut -d ' ' -f1-1)*1024
 	fi
-	var=1024
-	echo -e "${tint_shade}${bold}Memory:${normal}${NC}		$((totalk/var)) MiB"
+	echo -e "${tint_shade}${bold}Memory:${normal}${NC}		$((totalk)) MiB"
 }
 
 function cpu {
 	if [ $os == 'Linux' ]; then
 		res=$(lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g')
 	elif [ $os == 'Darwin' ]; then
-		res=$(sysctl -a | grep machdep.cpu.brand_string | cut -c25-)
+		res=$(sysctl -a | grep machdep.cpu.brand_string | cut -c27-)
 	else
 		res=$("Unknown")
 	fi
@@ -117,8 +116,10 @@ function cpu {
 }
 
 function wsl_check {
-	if grep -q microsoft /proc/version; then
-	echo "(WSL)"
+	if [ $os == 'Linux' ]; then
+		if grep -q microsoft /proc/version; then
+		echo "(WSL)"
+		fi
 	fi
 }
 
@@ -140,7 +141,7 @@ function totalpackages {
 	if [ $os == 'Linux' ]; then
 		res=$(dpkg-query -f '${binary:Package}\n' -W | wc -l)
 	elif [ $os == 'Darwin' ]; then
-		res=$(brew list --formula | wc -w)
+		res=$(brew list --formula | wc -w | cut -c6-)
 	fi	
 	echo -e "${tint_shade}${bold}Packages:${normal}${NC}	$res"
 }
