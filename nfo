@@ -130,9 +130,9 @@ function current_shell {
 
 function up_time {
 	if [ $os == 'Linux' ]; then
-		res=$(uptime -p | cut -d " " -f2- )
+		res=$(uptime | awk -F'( |,|:)+' '{d=h=m=0; if ($7=="min") m=$6; else {if ($7~/^day/) {d=$6;h=$8;m=$9} else {h=$6;m=$7}}} {print d+0,"days,",h+0,"hours,",m+0,"minutes"}')
 	elif [ $os == 'Darwin' ]; then
-		res="Not Supported Yet"
+		res=$(uptime | awk -F'( |,|:)+' '{d=h=m=0; if ($6=="mins") m=$5; else {if ($6~/^day/) {d=$5;h=$7;m=$8} else {h=$5;m=$6}}} {print d+0,"days,",h+0,"hours,",m+0,"minutes"}')
 	fi
 	echo -e "${tint_shade}${bold}Uptime:${normal}${NC}		$res"
 }
