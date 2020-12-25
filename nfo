@@ -99,7 +99,7 @@ function total_memory {
 	if [ $os == 'Linux' ]; then
 		totalk=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
 	elif [ $os == 'Darwin' ]; then
-		totalk="Not Supported Yet"
+		totalk=0
 	fi
 	var=1024
 	echo -e "${tint_shade}${bold}Memory:${normal}${NC}		$((totalk/var)) MiB"
@@ -123,7 +123,7 @@ function wsl_check {
 }
 
 function current_shell {
-	res=$($SHELL --version | cut -d' ' -f1-2)
+	res=$($SHELL --version | head -n 1 | tr ',' ' ' | cut -d' ' -f1-2)
 	echo -e "${tint_shade}${bold}Shell:${normal}${NC}		$res"
 }
 
@@ -140,7 +140,7 @@ function totalpackages {
 	if [ $os == 'Linux' ]; then
 		res=$(dpkg-query -f '${binary:Package}\n' -W | wc -l)
 	elif [ $os == 'Darwin' ]; then
-	        res="Not Supported on macOS"
+		res=$(brew list --formula | wc -w)
 	fi	
 	echo -e "${tint_shade}${bold}Packages:${normal}${NC}	$res"
 }
@@ -152,7 +152,7 @@ function resolution {
     			res="Couldn't find out"
 		fi
 	elif [ $os == 'Darwin' ]; then
-		res=$(system_profiler SPDisplaysDataType | grep Resolution | cut -c11-)
+		res=$(system_profiler SPDisplaysDataType | grep Resolution | cut -c23-)
 	else
 		res="OS not supported"
 	fi
