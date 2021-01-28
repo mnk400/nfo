@@ -1,19 +1,21 @@
 #!/bin/bash
-
+#
 # Created by Manik
 # on Aug 6, 2020
 
+# Look for config files in the same directory
+# when in dev mode, else look in ~/./config
 if [ "$1" == "--dev" ]; then
 	echo "dev mode"
 	confg="config.conf"
 	artwork="art.sh"	
 else
 	# Setting path for config and artwork
-	confg="/home/${USER}/.config/nfo/config.conf"
-	# confg="config.conf"
-	artwork="/home/${USER}/.config/nfo/art.sh"
+	confg=~/.config/nfo/config.conf
+	artwork=~/.config/nfo/art.sh
 fi
 
+#Throw errors and quit if config files do not exist
 if [ -f $confg ]; then
 	. $confg
 else
