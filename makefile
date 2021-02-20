@@ -1,4 +1,5 @@
 install : 	
+		@chmod +x nfo
 		@mkdir ~/.config/nfo
 		@cp art.sh ~/.config/nfo
 		@cp config.conf ~/.config/nfo
