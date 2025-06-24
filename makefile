@@ -1,18 +1,57 @@
-install : 	
-		@chmod +x nfo
-		@mkdir ~/.config/nfo
-		@cp art.sh ~/.config/nfo
-		@cp config.conf ~/.config/nfo
-		@sudo cp nfo /usr/local/bin
+# nfo Makefile
+# =============
 
-uninstall : 
-		@rm -r ~/.config/nfo
-		@sudo rm /usr/local/bin/nfo
+SHELL := /bin/bash
+PREFIX := /usr/local
+BINDIR := $(PREFIX)/bin
+CONFIGDIR := $(HOME)/.config/nfo
 
-reinstall : 
-		@rm -r ~/.config/nfo
-		@sudo rm /usr/local/bin/nfo
-		@mkdir ~/.config/nfo
-		@cp art.sh ~/.config/nfo
-		@cp config.conf ~/.config/nfo
-		@sudo cp nfo /usr/local/bin
+# Default target
+.PHONY: all
+all: help
+
+# Help target
+.PHONY: help
+help:
+	@echo "nfo - A minimal neofetch alternative"
+	@echo ""
+	@echo "Available targets:"
+	@echo "  install     - Install nfo system-wide"
+	@echo "  uninstall   - Remove nfo from system"
+	@echo "  reinstall   - Reinstall nfo"
+	@echo "  lint        - Run shellcheck on scripts"
+
+# Installation
+.PHONY: install
+install: lint
+	@echo "Installing nfo..."
+	@chmod +x nfo
+	@mkdir -p "$(CONFIGDIR)"
+	@cp art.sh "$(CONFIGDIR)/"
+	@cp config.conf "$(CONFIGDIR)/"
+	@sudo cp nfo "$(BINDIR)/"
+	@echo "Installation complete!"
+	@echo "Run 'nfo' to test the installation"
+
+# Uninstallation
+.PHONY: uninstall
+uninstall:
+	@echo "Uninstalling nfo..."
+	@rm -rf "$(CONFIGDIR)"
+	@sudo rm -f "$(BINDIR)/nfo"
+	@sudo rm -f "$(BINDIR)/nfo-dev"
+	@echo "Uninstallation complete!"
+
+# Reinstallation
+.PHONY: reinstall
+reinstall: uninstall install
+
+# Lint check using shellcheck
+.PHONY: lint
+lint:
+	@echo "Running shellcheck..."
+	@if command -v shellcheck >/dev/null 2>&1; then \
+		shellcheck nfo art.sh || echo "Warning: shellcheck found issues"; \
+	else \
+		echo "Warning: shellcheck not installed, skipping lint check"; \
+	fi

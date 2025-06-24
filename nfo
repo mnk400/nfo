@@ -1,39 +1,13 @@
 #!/bin/bash
 #
+# nfo - A minimal neofetch alternative
 # Created by Manik
-# on Aug 6, 2020
 
-# Look for config files in the same directory
-# when in dev mode, else look in ~/./config
-if [ "$1" == "--dev" ]; then
-	echo "dev mode"
-	confg="config.conf"
-	artwork="art.sh"	
-else
-	# Setting path for config and artwork
-	confg=~/.config/nfo/config.conf
-	artwork=~/.config/nfo/art.sh
-fi
+# Global variables
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly OS="$(uname)"
 
-#Throw errors and quit if config files do not exist
-if [ -f $confg ]; then
-	. $confg
-else
-	echo "Config file not found"
-	exit
-fi
-
-if [ -f $artwork ]; then
-	source $artwork
-else
-	echo "Artwork file not found"
-	exit
-fi
-
-# OS Detect
-os=$(uname)
-
-# Define colours
+# Color definitions
 RED='\033[0;31m'
 MAGENTA='\033[0;35m'
 GREEN='\033[0;32m'
@@ -42,156 +16,318 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# Text styling
-if [ "$ascii_bold" == "True" ]; then
-	bold=$(tput bold)
-else
-	bold=$()
+# Configuration variables
+CONFIG_FILE=""
+ARTWORK_FILE=""
+TINT_SHADE=""
+BOLD=""
+NORMAL=""
+
+# Enable strict error handling after variable declarations
+set -euo pipefail
+
+# Initialize configuration
+init_config() {
+    local config_dir artwork_dir
+    
+    if [[ "${1:-}" == "--dev" ]]; then
+        echo "Development mode enabled"
+        config_dir="$SCRIPT_DIR"
+        artwork_dir="$SCRIPT_DIR"
+    else
+        config_dir="$HOME/.config/nfo"
+        artwork_dir="$HOME/.config/nfo"
+    fi
+    
+    CONFIG_FILE="$config_dir/config.conf"
+    ARTWORK_FILE="$artwork_dir/art.sh"
+    
+    # Validate and source config files
+    [[ -f "$CONFIG_FILE" ]] || { echo "Error: Config file not found at $CONFIG_FILE" >&2; exit 1; }
+    [[ -f "$ARTWORK_FILE" ]] || { echo "Error: Artwork file not found at $ARTWORK_FILE" >&2; exit 1; }
+    
+    # Temporarily disable strict error handling for sourcing files
+    set +e
+    source "$CONFIG_FILE"
+    source "$ARTWORK_FILE"
+    set -e
+}
+
+# Set up text styling
+setup_styling() {
+    NORMAL="$(tput sgr0 2>/dev/null || echo '')"
+    
+    if [[ "${ascii_bold:-}" == "True" ]]; then
+        BOLD="$(tput bold 2>/dev/null || echo '')"
+    else
+        BOLD=""
+    fi
+    
+    # Tint colors
+    case "${TINT:-}" in
+        Magenta) TINT_SHADE="$MAGENTA" ;;
+        Red)     TINT_SHADE="$RED" ;;
+        Green)   TINT_SHADE="$GREEN" ;;
+        Yellow)  TINT_SHADE="$YELLOW" ;;
+        Blue)    TINT_SHADE="$BLUE" ;;
+        Cyan)    TINT_SHADE="$CYAN" ;;
+        *)       TINT_SHADE="$NC" ;;
+    esac
+}
+
+# Utility function for formatted output
+print_info() {
+    local label="$1"
+    local value="$2"
+    local spacing="${3:-\t\t}"
+    
+    echo -e "${TINT_SHADE}${BOLD}${label}:${NORMAL}${NC}${spacing}${value}"
+}
+
+# System information functions
+get_os_info() {
+    local result
+    
+    case "$OS" in
+        Linux)
+            if [[ -f /etc/os-release ]]; then
+                source /etc/os-release
+                result="$NAME ${VERSION_ID:-}"
+            else
+                result="Linux (unknown distribution)"
+            fi
+            ;;
+        Darwin)
+            local version
+            version="$(sw_vers -productVersion 2>/dev/null || echo 'unknown')"
+            result="macOS $version"
+            ;;
+        *)
+            result="$OS (unsupported)"
+            ;;
+    esac
+    
+    # Check for WSL
+    if [[ "$OS" == "Linux" ]] && grep -q microsoft /proc/version 2>/dev/null; then
+        result="$result (WSL)"
+    fi
+    
+    print_info "OS" "$result"
+}
+
+get_kernel_info() {
+    local version
+    version="$(uname -r)"
+    
+    case "$OS" in
+        Darwin) version="Darwin Kernel $version" ;;
+        Linux)  version="Linux $version" ;;
+    esac
+    
+    print_info "Kernel" "$version"
+}
+
+get_memory_info() {
+    local total_mb
+    
+    case "$OS" in
+        Linux)
+            if [[ -f /proc/meminfo ]]; then
+                total_mb="$(awk '/^MemTotal:/ {print int($2/1024)}' /proc/meminfo)"
+            else
+                total_mb="unknown"
+            fi
+            ;;
+        Darwin)
+            local total_gb
+            total_gb="$(system_profiler SPHardwareDataType 2>/dev/null | 
+                       awk '/Memory:/ {print $2}' | head -1)"
+            if [[ -n "$total_gb" ]]; then
+                total_mb="$((total_gb * 1024))"
+            else
+                total_mb="unknown"
+            fi
+            ;;
+        *)
+            total_mb="unsupported"
+            ;;
+    esac
+    
+    print_info "Memory" "${total_mb} MiB"
+}
+
+get_cpu_info() {
+    local cpu_info
+    
+    case "$OS" in
+        Linux)
+            cpu_info="$(lscpu 2>/dev/null | awk -F': ' '/Model name/ {print $2; exit}' | sed 's/^[[:space:]]*//')"
+            [[ -z "$cpu_info" ]] && cpu_info="$(cat /proc/cpuinfo 2>/dev/null | awk -F': ' '/model name/ {print $2; exit}' | sed 's/^[[:space:]]*//')"
+            ;;
+        Darwin)
+            cpu_info="$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo 'unknown')"
+            ;;
+        *)
+            cpu_info="unsupported"
+            ;;
+    esac
+    
+    print_info "CPU" "${cpu_info:-unknown}"
+}
+
+get_shell_info() {
+    local shell_info
+    shell_info="$("$SHELL" --version 2>/dev/null | head -1 | cut -d',' -f1 | awk '{print $1, $2}')"
+    print_info "Shell" "${shell_info:-$SHELL}"
+}
+
+get_uptime_info() {
+    local uptime_str
+    
+    case "$OS" in
+        Linux)
+            uptime_str="$(uptime | awk -F'( |,|:)+' '
+                {d=h=m=0; 
+                 if ($7=="min") m=$6; 
+                 else if ($7~/^day/) {d=$6;h=$8;m=$9} 
+                 else {h=$6;m=$7}} 
+                {printf "%d days, %d hours, %d minutes", d, h, m}')"
+            ;;
+        Darwin)
+            uptime_str="$(uptime | awk -F'( |,|:)+' '
+                {d=h=m=0; 
+                 if ($5=="mins") m=$4; 
+                 else if ($5~/^day/) {d=$4;h=$6;m=$7} 
+                 else {h=$4;m=$5}} 
+                {printf "%d days, %d hours, %d minutes", d, h, m}')"
+            ;;
+        *)
+            uptime_str="unsupported"
+            ;;
+    esac
+    
+    print_info "Uptime" "$uptime_str"
+}
+
+get_package_count() {
+    local count
+    
+    case "$OS" in
+        Linux)
+            if command -v dpkg-query >/dev/null 2>&1; then
+                count="$(dpkg-query -f '${binary:Package}\n' -W 2>/dev/null | wc -l)"
+            elif command -v rpm >/dev/null 2>&1; then
+                count="$(rpm -qa 2>/dev/null | wc -l)"
+            elif command -v pacman >/dev/null 2>&1; then
+                count="$(pacman -Q 2>/dev/null | wc -l)"
+            else
+                count="unknown"
+            fi
+            ;;
+        Darwin)
+            if command -v brew >/dev/null 2>&1; then
+                count="$(brew list --formula 2>/dev/null | wc -l | tr -d ' ')"
+            else
+                count="0 (brew not installed)"
+            fi
+            ;;
+        *)
+            count="unsupported"
+            ;;
+    esac
+    print_info "Packages" "$count" "\t"
+}
+
+get_resolution_info() {
+    local resolution
+    
+    case "$OS" in
+        Linux)
+            if command -v xdpyinfo >/dev/null 2>&1; then
+                resolution="$(timeout 2s xdpyinfo 2>/dev/null | 
+                             awk '/dimensions:/ {print $2; exit}')"
+            fi
+            [[ -z "$resolution" ]] && resolution="unknown"
+            ;;
+        Darwin)
+            resolution="$(system_profiler SPDisplaysDataType 2>/dev/null | 
+                         awk '/Resolution:/ {print $2 " x " $4; exit}')"
+            [[ -z "$resolution" ]] && resolution="unknown"
+            ;;
+        *)
+            resolution="unsupported"
+            ;;
+    esac
+    
+    print_info "Resolution" "$resolution" " \t"
+}
+
+# Display functions
+show_art() {
+    case "${ART:-nfo}" in
+        nfo)     printf "%s\n\n" "${nfo_isometric:-}" ;;
+        key)     printf "%s\n\n" "${keyboard:-}" ;;
+        file)    printf "%s\n\n" "${file:-}" ;;
+        name)    printf "%s\n\n" "${name:-}" ;;
+        toilet)  
+            if command -v toilet >/dev/null 2>&1; then
+                toilet -f future --gay "${toiet_msg:-nfo}"
+            else
+                echo "toilet command not found"
+            fi
+            ;;
+        *)       echo "Unknown art type: ${ART}" ;;
+    esac
+}
+
+show_host() {
+    if [[ "${toilet_host:-}" == "True" ]] && command -v toilet >/dev/null 2>&1; then
+        toilet -f future --gay "${USER}@${HOSTNAME}"
+    else
+        echo -e "${TINT_SHADE}${BOLD}${USER}${NC}@${TINT_SHADE}${BOLD}${HOSTNAME}${NC}"
+    fi
+}
+
+show_colors() {
+    echo -e "${RED}▄${NC} ${MAGENTA}▄${NC} ${YELLOW}▄${NC} ${GREEN}▄${NC} ${CYAN}▄${NC} ${BLUE}▄${NC}"
+    echo -e "${RED}▀${NC} ${MAGENTA}▀${NC} ${YELLOW}▀${NC} ${GREEN}▀${NC} ${CYAN}▀${NC} ${BLUE}▀${NC}"
+}
+
+# Main execution function
+nfo() {
+    local func_name="$1"
+    
+    case "$func_name" in
+        art)         show_art ;;
+        host)        show_host ;;
+        colors)      show_colors ;;
+        os)          get_os_info ;;
+        kernel)      get_kernel_info ;;
+        resolution)  get_resolution_info ;;
+        up_time)     get_uptime_info ;;
+        current_shell) get_shell_info ;;
+        totalpackages) get_package_count ;;
+        total_memory) get_memory_info ;;
+        cpu)         get_cpu_info ;;
+        *)           echo "Unknown function: $func_name" >&2 ;;
+    esac
+}
+
+# Main execution
+main() {
+    init_config "$@"
+    setup_styling
+    
+    # Execute the print_out function from config
+    if declare -f print_out >/dev/null; then
+        print_out
+    else
+        echo "Error: print_out function not found in config" >&2
+        exit 1
+    fi
+}
+
+# Run main function if script is executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
 fi
-
-normal=$(tput sgr0)
-
-if [ $TINT == 'Magenta' ]; then
-		tint_shade=$MAGENTA
-elif [ $TINT == 'Red' ]; then
-		tint_shade=$RED
-elif [ $TINT == 'Green' ]; then
-		tint_shade=$GREEN
-elif [ $TINT == 'Yellow' ]; then
-		tint_shade=$YELLOW
-elif [ $TINT == 'Blue' ]; then
-		tint_shade=$BLUE
-elif [ $TINT == 'Cyan' ]; then
-		tint_shade=$CYAN
-else
-		tint_shade=$NC
-fi
-
-function os {
-	if [ $os == 'Linux' ]; then
-		if [ -f /etc/os-release ]; then
-			. /etc/os-release
-			res="$NAME $VERSION_ID"
-		else
-			res="Can't read /etc/os-release"
-		fi
-	elif [ $os == 'Darwin' ]; then
-		ver=$(sw_vers -productVersion)
-		res="macOS $ver"
-	else
-		res="OS family not supported yet"
-	fi
-	echo -e "${tint_shade}${bold}OS:${normal}${NC}		$res $(wsl_check)"
-}
-
-function kernel {
-	if [ $os == 'Linux' ]; then
-		ver=$(uname -r)
-	elif [ $os == 'Darwin' ]; then
-		ver=$(uname -r)
-		ver="Darwin Kernel $ver"
-	else
-		ver="Not supported yet"
-	fi	
-
-	echo -e "${tint_shade}${bold}Kernel${normal}${NC}		$ver"
-}
-
-function total_memory {
-	if [ $os == 'Linux' ]; then
-		totalk=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)/1024
-	elif [ $os == 'Darwin' ]; then
-		totalk=$(system_profiler SPHardwareDataType | grep "Memory:" | cut -c15- | cut -d ' ' -f1-1)*1024
-	fi
-	echo -e "${tint_shade}${bold}Memory:${normal}${NC}		$((totalk)) MiB"
-}
-
-function cpu {
-	if [ $os == 'Linux' ]; then
-		res=$(lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g')
-	elif [ $os == 'Darwin' ]; then
-		res=$(sysctl -a | grep machdep.cpu.brand_string | cut -c27-)
-	else
-		res=$("Unknown")
-	fi
-	echo -e "${tint_shade}${bold}CPU:${normal}${NC}		$res"
-}
-
-function wsl_check {
-	if [ $os == 'Linux' ]; then
-		if grep -q microsoft /proc/version; then
-		echo "(WSL)"
-		fi
-	fi
-}
-
-function current_shell {
-	res=$($SHELL --version | head -n 1 | tr ',' ' ' | cut -d' ' -f1-2)
-	echo -e "${tint_shade}${bold}Shell:${normal}${NC}		$res"
-}
-
-function up_time {
-	if [ $os == 'Linux' ]; then
-		res=$(uptime | awk -F'( |,|:)+' '{d=h=m=0; if ($7=="min") m=$6; else {if ($7~/^day/) {d=$6;h=$8;m=$9} else {h=$6;m=$7}}} {print d+0,"days,",h+0,"hours,",m+0,"minutes"}')
-	elif [ $os == 'Darwin' ]; then
-		res=$(uptime | awk -F'( |,|:)+' '{d=h=m=0; if ($5=="mins") m=$4; else {if ($5~/^day/) {d=$4;h=$6;m=$7} else {h=$4;m=$5}}} {print d+0,"days,",h+0,"hours,",m+0,"minutes"}')
-	fi
-	echo -e "${tint_shade}${bold}Uptime:${normal}${NC}		$res"
-}
-
-function totalpackages {
-	if [ $os == 'Linux' ]; then
-		res=$(dpkg-query -f '${binary:Package}\n' -W | wc -l)
-	elif [ $os == 'Darwin' ]; then
-		res=$(brew list --formula | wc -w | cut -c6-)
-	fi	
-	echo -e "${tint_shade}${bold}Packages:${normal}${NC}	$res"
-}
-
-function resolution {
-	if [ $os == 'Linux' ]; then
-		res=$(timeout 2s bash -c "xdpyinfo | grep dimensions | sed -r 's/^[^0-9]*([0-9]+x[0-9]+).*$/\1/'")
-		if [ -z "$res" ]; then
-    			res="Couldn't find out"
-		fi
-	elif [ $os == 'Darwin' ]; then
-		res=$(system_profiler SPDisplaysDataType | grep Resolution | cut -c23-)
-	else
-		res="OS not supported"
-	fi
-	
-	echo -e "${tint_shade}${bold}Resolution:${normal}${NC} 	$res"
-}
-
-function art {
-	if [ $ART == 'nfo' ]; then
-		printf "$nfo_isometric\n\n"
-	elif [ $ART == 'key' ]; then
-		printf "$keyboard\n\n"
-	elif [ $ART == 'file' ]; then
-		printf "$file\n\n"
-	elif [ $ART == 'name' ]; then
-		printf "$name\n\n"
-	elif [ $ART == 'toilet' ]; then
-		toilet -f future --gay "$toiet_msg"
-	fi
-}
-
-function host {
-	if [ $toilet_host == 'True' ]; then
-		toilet -f future --gay "$USER@$HOSTNAME"
-	else
-		echo -e "${tint_shade}${bold}"$USER"${NC}""@""${tint_shade}${bold}"$HOSTNAME"${NC}"
-	fi
-}
-
-function colors {
-	echo -e "${RED}▄${NC} ${MAGENTA}▄${NC} ${YELLOW}▄${NC} ${GREEN}▄${NC} ${CYAN}▄${NC} ${BLUE}▄${NC} "
-	echo -e "${RED}▀${NC} ${MAGENTA}▀${NC} ${YELLOW}▀${NC} ${GREEN}▀${NC} ${CYAN}▀${NC} ${BLUE}▀${NC} "
-}
-
-function nfo {
-	echo -e "$($1)"
-}
-
-print_out
