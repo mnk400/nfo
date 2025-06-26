@@ -262,6 +262,34 @@ get_resolution_info() {
     print_info "Resolution" "$resolution" " \t"
 }
 
+get_disk_info() {
+    local disk_info
+    disk_info="$(df -h / | awk 'NR==2 {print $4}')"
+    print_info "Disk Usage" "$disk_info" " \t"
+}
+
+get_terminal_info() {
+    local term_info
+    term_info="${TERM_PROGRAM:-unknown}"
+    print_info "Terminal" "$term_info" " \t"
+}
+
+get_local_ip_info() {
+    local local_ip
+    case "$OS" in
+        Linux)
+            local_ip="$(hostname -I | awk '{print $1}')"
+            ;;
+        Darwin)
+            local_ip="$(ipconfig getifaddr en0 || ipconfig getifaddr en1)"
+            ;;
+        *)
+            local_ip="unsupported"
+            ;;
+    esac
+    print_info "Local IP" "$local_ip" " \t"
+}
+
 # Display functions
 show_art() {
     case "${ART:-nfo}" in
@@ -309,6 +337,9 @@ nfo() {
         totalpackages) get_package_count ;;
         total_memory) get_memory_info ;;
         cpu)         get_cpu_info ;;
+        disk)        get_disk_info ;;
+        terminal)    get_terminal_info ;;
+        local_ip)    get_local_ip_info ;;
         *)           echo "Unknown function: $func_name" >&2 ;;
     esac
 }

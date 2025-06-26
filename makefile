@@ -28,7 +28,14 @@ install: lint
 	@chmod +x nfo
 	@mkdir -p "$(CONFIGDIR)"
 	@cp art.sh "$(CONFIGDIR)/"
-	@cp config.conf "$(CONFIGDIR)/"
+	@if [ ! -f "$(CONFIGDIR)/config.conf" ]; then \
+		echo "Installing default config..."; \
+		cp config.conf "$(CONFIGDIR)/"; \
+	else \
+		echo "Existing config found, preserving user configuration"; \
+		echo "Default config available as config.conf.default"; \
+		cp config.conf "$(CONFIGDIR)/config.conf.default"; \
+	fi
 	@sudo cp nfo "$(BINDIR)/"
 	@echo "Installation complete!"
 	@echo "Run 'nfo' to test the installation"
