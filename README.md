@@ -9,9 +9,34 @@ A CLI fetch utility written in bash
 
 ## Installation
 
-Use ```make install``` or ```make uninstall``` to install/uninstall the script.
+### One-liner Install
 
-Config file can be found in the .config folder in user directory.
+```bash
+curl -fsSL https://raw.githubusercontent.com/mnk400/nfo/master/install.sh | bash
+```
+
+The installer will:
+- Install nfo to `~/.local/bin/nfo`
+- Set up config files in `~/.config/nfo/`
+- Preserve existing configuration if found
+
+### Manual Install
+
+1. Copy `nfo` to a directory in your PATH
+2. Copy `art.sh` and `config.conf` to `~/.config/nfo/`
+3. Make sure `nfo` is executable: `chmod +x nfo`
+
+### Uninstall
+
+```bash
+rm ~/.local/bin/nfo
+rm -rf ~/.config/nfo
+```
+
+**Note:** Make sure `~/.local/bin` is in your PATH. Add this to your shell config if needed:
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
 
 ## Configuration
 
