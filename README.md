@@ -9,16 +9,14 @@ A CLI fetch utility written in bash
 
 ## Installation
 
-### One-liner Install
+### Using Brew
+
+To install using `brew` you'd have to tap my homebrew repository
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mnk400/nfo/master/install.sh | bash
+brew tap manik/tap https://github.com/mnk400/homebrew-tap
+brew install nfo
 ```
-
-The installer will:
-- Install nfo to `~/.local/bin/nfo`
-- Set up config files in `~/.config/nfo/`
-- Preserve existing configuration if found
 
 ### Manual Install
 
@@ -27,6 +25,12 @@ The installer will:
 3. Make sure `nfo` is executable: `chmod +x nfo`
 
 ### Uninstall
+
+```bash
+brew uninstall nfo
+```
+
+or if you installed manually
 
 ```bash
 rm ~/.local/bin/nfo
