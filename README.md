@@ -115,6 +115,4 @@ print_out() {
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `toilet_host` | Use toilet for hostname display | `False` |
-| `toiet_msg` | Message for toilet art | `this is nfo` |
-| `X11_TIMEOUT` | Timeout for X11 operations (Linux) | `2` |
-| `MEMORY_UNIT` | Memory unit preference | `MiB` |
+| `toilet_msg` | Message for toilet art | `this is nfo` |

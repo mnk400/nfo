@@ -30,7 +30,7 @@ set -euo pipefail
 init_config() {
     local config_dir artwork_dir
     
-    if [[ "${1:-}" == "--dev" ]]; then
+    if [[ "${1:-}" == "--super-secret-dev-mode" ]]; then
         echo "Development mode enabled"
         config_dir="$SCRIPT_DIR"
         artwork_dir="$SCRIPT_DIR"
@@ -47,10 +47,10 @@ init_config() {
     [[ -f "$ARTWORK_FILE" ]] || { echo "Error: Artwork file not found at $ARTWORK_FILE" >&2; exit 1; }
     
     # Temporarily disable strict error handling for sourcing files
-    set +e
+    set +euo pipefail
     source "$CONFIG_FILE"
     source "$ARTWORK_FILE"
-    set -e
+    set -euo pipefail
 }
 
 # Set up text styling
@@ -128,32 +128,49 @@ get_kernel_info() {
 }
 
 get_memory_info() {
-    local total_mb
-    
+    local used_mb total_mb memory_str
+
     case "$OS" in
         Linux)
             if [[ -f /proc/meminfo ]]; then
                 total_mb="$(awk '/^MemTotal:/ {print int($2/1024)}' /proc/meminfo)"
+                local avail_mb
+                avail_mb="$(awk '/^MemAvailable:/ {print int($2/1024)}' /proc/meminfo)"
+                used_mb="$((total_mb - avail_mb))"
             else
-                total_mb="unknown"
+                memory_str="unknown"
             fi
             ;;
         Darwin)
-            local total_gb
-            total_gb="$(system_profiler SPHardwareDataType 2>/dev/null | 
-                       awk '/Memory:/ {print $2}' | head -1)"
-            if [[ -n "$total_gb" ]]; then
-                total_mb="$((total_gb * 1024))"
-            else
-                total_mb="unknown"
-            fi
+            local page_size pages_free pages_inactive pages_speculative total_bytes
+            page_size="$(sysctl -n hw.pagesize 2>/dev/null)" || page_size=4096
+            total_bytes="$(sysctl -n hw.memsize 2>/dev/null)" || total_bytes=0
+            total_mb="$((total_bytes / 1024 / 1024))"
+
+            # Get memory stats from vm_stat
+            local vm_output
+            vm_output="$(vm_stat 2>/dev/null)"
+            pages_free="$(echo "$vm_output" | awk '/Pages free:/ {gsub(/\./,"",$3); print $3}')"
+            pages_inactive="$(echo "$vm_output" | awk '/Pages inactive:/ {gsub(/\./,"",$3); print $3}')"
+            pages_speculative="$(echo "$vm_output" | awk '/Pages speculative:/ {gsub(/\./,"",$3); print $3}')"
+
+            local free_mb
+            free_mb="$(( (pages_free + pages_inactive + pages_speculative) * page_size / 1024 / 1024 ))"
+            used_mb="$((total_mb - free_mb))"
             ;;
         *)
-            total_mb="unsupported"
+            memory_str="unsupported"
             ;;
     esac
-    
-    print_info "Memory" "${total_mb} MiB"
+
+    if [[ -z "${memory_str:-}" ]]; then
+        local total_gib used_gib
+        total_gib="$(awk "BEGIN {printf \"%.1f\", $total_mb/1024}")"
+        used_gib="$(awk "BEGIN {printf \"%.1f\", $used_mb/1024}")"
+        memory_str="${used_gib} GiB / ${total_gib} GiB"
+    fi
+
+    print_info "Memory" "$memory_str"
 }
 
 get_cpu_info() {
@@ -182,30 +199,41 @@ get_shell_info() {
 }
 
 get_uptime_info() {
-    local uptime_str
-    
+    local uptime_str uptime_secs
+
     case "$OS" in
         Linux)
-            uptime_str="$(uptime | awk -F'( |,|:)+' '
-                {d=h=m=0; 
-                 if ($7=="min") m=$6; 
-                 else if ($7~/^day/) {d=$6;h=$8;m=$9} 
-                 else {h=$6;m=$7}} 
-                {printf "%d days, %d hours, %d minutes", d, h, m}')"
+            if [[ -f /proc/uptime ]]; then
+                uptime_secs="$(awk '{print int($1)}' /proc/uptime)"
+            else
+                uptime_secs=0
+            fi
             ;;
         Darwin)
-            uptime_str="$(uptime | awk -F'( |,|:)+' '
-                {d=h=m=0; 
-                 if ($5=="mins") m=$4; 
-                 else if ($5~/^day/) {d=$4;h=$6;m=$7} 
-                 else {h=$4;m=$5}} 
-                {printf "%d days, %d hours, %d minutes", d, h, m}')"
+            local boot_time now
+            boot_time="$(sysctl -n kern.boottime 2>/dev/null | awk '{print $4}' | tr -d ',')"
+            now="$(date +%s)"
+            if [[ -n "$boot_time" ]]; then
+                uptime_secs="$((now - boot_time))"
+            else
+                uptime_secs=0
+            fi
             ;;
         *)
-            uptime_str="unsupported"
+            uptime_secs=0
             ;;
     esac
-    
+
+    if [[ "$uptime_secs" -gt 0 ]]; then
+        local days hours mins
+        days="$((uptime_secs / 86400))"
+        hours="$(( (uptime_secs % 86400) / 3600 ))"
+        mins="$(( (uptime_secs % 3600) / 60 ))"
+        uptime_str="${days} days, ${hours} hours, ${mins} minutes"
+    else
+        uptime_str="unknown"
+    fi
+
     print_info "Uptime" "$uptime_str"
 }
 
@@ -215,11 +243,11 @@ get_package_count() {
     case "$OS" in
         Linux)
             if command -v dpkg-query >/dev/null 2>&1; then
-                count="$(dpkg-query -f '${binary:Package}\n' -W 2>/dev/null | wc -l)"
+                count="$(dpkg-query -f '${binary:Package}\n' -W 2>/dev/null | wc -l | tr -d ' ')"
             elif command -v rpm >/dev/null 2>&1; then
-                count="$(rpm -qa 2>/dev/null | wc -l)"
+                count="$(rpm -qa 2>/dev/null | wc -l | tr -d ' ')"
             elif command -v pacman >/dev/null 2>&1; then
-                count="$(pacman -Q 2>/dev/null | wc -l)"
+                count="$(pacman -Q 2>/dev/null | wc -l | tr -d ' ')"
             else
                 count="unknown"
             fi
@@ -264,8 +292,8 @@ get_resolution_info() {
 
 get_disk_info() {
     local disk_info
-    disk_info="$(df -h / | awk 'NR==2 {print $4}')"
-    print_info "Disk Usage" "$disk_info" " \t"
+    disk_info="$(df -h / | awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}')"
+    print_info "Disk Usage" "${disk_info:-unknown}" " \t"
 }
 
 get_terminal_info() {
@@ -275,19 +303,20 @@ get_terminal_info() {
 }
 
 get_local_ip_info() {
-    local local_ip
+    local local_ip=""
     case "$OS" in
         Linux)
-            local_ip="$(hostname -I | awk '{print $1}')"
+            local_ip="$(hostname -I 2>/dev/null | awk '{print $1}')" || true
             ;;
         Darwin)
-            local_ip="$(ipconfig getifaddr en0 || ipconfig getifaddr en1)"
+            local_ip="$(ipconfig getifaddr en0 2>/dev/null)" || \
+            local_ip="$(ipconfig getifaddr en1 2>/dev/null)" || true
             ;;
         *)
             local_ip="unsupported"
             ;;
     esac
-    print_info "Local IP" "$local_ip" " \t"
+    print_info "Local IP" "${local_ip:-unknown}" " \t"
 }
 
 # Display functions
@@ -299,7 +328,7 @@ show_art() {
         name)    printf "%s\n\n" "${name:-}" ;;
         toilet)  
             if command -v toilet >/dev/null 2>&1; then
-                toilet -f future --gay "${toiet_msg:-nfo}"
+                toilet -f future --gay "${toilet_msg:-nfo}"
             else
                 echo "toilet command not found"
             fi
@@ -309,10 +338,11 @@ show_art() {
 }
 
 show_host() {
+    local hostname_val="${HOSTNAME:-$(hostname 2>/dev/null || echo 'unknown')}"
     if [[ "${toilet_host:-}" == "True" ]] && command -v toilet >/dev/null 2>&1; then
-        toilet -f future --gay "${USER}@${HOSTNAME}"
+        toilet -f future --gay "${USER}@${hostname_val}"
     else
-        echo -e "${TINT_SHADE}${BOLD}${USER}${NC}@${TINT_SHADE}${BOLD}${HOSTNAME}${NC}"
+        echo -e "${TINT_SHADE}${BOLD}${USER}${NC}@${TINT_SHADE}${BOLD}${hostname_val}${NC}"
     fi
 }
 
