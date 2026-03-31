@@ -319,6 +319,44 @@ get_local_ip_info() {
     print_info "Local IP" "${local_ip:-unknown}" " \t"
 }
 
+get_battery_info() {
+    local battery_str=""
+
+    case "$OS" in
+        Darwin)
+            local batt_output
+            batt_output="$(pmset -g batt 2>/dev/null)"
+            if [[ "$batt_output" == *InternalBattery* ]]; then
+                local percent state
+                percent="$(grep -o -m 1 '[0-9]\+%' <<< "$batt_output")"
+                state="$(grep -oE -m 1 '(charging|discharging|charged|finishing charge)' <<< "$batt_output")"
+                case "$state" in
+                    charging|"finishing charge") state="Charging" ;;
+                    discharging) state="Discharging" ;;
+                    charged)     state="Full" ;;
+                    *)           state="Unknown" ;;
+                esac
+                battery_str="${percent} (${state})"
+            fi
+            ;;
+        Linux)
+            local bat_path percent="" state=""
+            for bat_path in /sys/class/power_supply/BAT{0,1}; do
+                [[ -d "$bat_path" ]] && break
+            done
+            read -r percent < "$bat_path/capacity" 2>/dev/null || true
+            read -r state < "$bat_path/status" 2>/dev/null || true
+            if [[ -n "$percent" ]]; then
+                battery_str="${percent}% (${state:-Unknown})"
+            fi
+            ;;
+    esac
+
+    if [[ -n "$battery_str" ]]; then
+        print_info "Battery" "$battery_str" " \t"
+    fi
+}
+
 # Display functions
 show_art() {
     case "${ART:-nfo}" in
@@ -370,6 +408,7 @@ nfo() {
         disk)        get_disk_info ;;
         terminal)    get_terminal_info ;;
         local_ip)    get_local_ip_info ;;
+        battery)     get_battery_info ;;
         *)           echo "Unknown function: $func_name" >&2 ;;
     esac
 }
