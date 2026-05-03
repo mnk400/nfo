@@ -272,14 +272,14 @@ get_resolution_info() {
     case "$OS" in
         Linux)
             if command -v xdpyinfo >/dev/null 2>&1; then
-                resolution="$(timeout 2s xdpyinfo 2>/dev/null | 
-                             awk '/dimensions:/ {print $2; exit}')"
+                resolution="$(timeout 2s xdpyinfo 2>/dev/null |
+                             awk '/dimensions:/ {printf sep $2; sep=", "}')"
             fi
             [[ -z "$resolution" ]] && resolution="unknown"
             ;;
         Darwin)
-            resolution="$(system_profiler SPDisplaysDataType 2>/dev/null | 
-                         awk '/Resolution:/ {print $2 " x " $4; exit}')"
+            resolution="$(system_profiler SPDisplaysDataType 2>/dev/null |
+                         awk '/Resolution:/ {printf sep $2 " x " $4; sep=", "}')"
             [[ -z "$resolution" ]] && resolution="unknown"
             ;;
         *)
