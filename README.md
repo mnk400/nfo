@@ -1,103 +1,44 @@
-<!---
-https://i.imgur.com/cyk5eVN.png
--->
-<h3 align="left"><img src="https://i.imgur.com/9YIHT6C.png" alt="logo" height="80px"></h3>
+<h3 align="left"><img src="https://i.imgur.com/9YIHT6C.png" alt="nfo" height="80px"></h3>
 
-A CLI fetch utility written in bash
+Minimal fetch program with customizable ASCII art.
 
 ![](https://i.imgur.com/JyIAXzR.png)
 
-## Installation
+## Install
 
-### Using Brew
-
-To install using `brew` you'd have to tap my homebrew repository
+### Homebrew
 
 ```bash
-brew tap manik/tap https://github.com/mnk400/homebrew-tap
+brew tap mnk400/tap
 brew install nfo
 ```
 
-### Manual Install
-
-1. Copy `nfo` to a directory in your PATH
-2. Copy `art.sh` and `config.conf` to `~/.config/nfo/`
-3. Make sure `nfo` is executable: `chmod +x nfo`
-
-### Uninstall
+### Manual
 
 ```bash
-brew uninstall nfo
+cp nfo ~/.local/bin/nfo
+mkdir -p ~/.config/nfo
+cp art.sh config.conf ~/.config/nfo/
+chmod +x ~/.local/bin/nfo
 ```
 
-or if you installed manually
+Make sure `~/.local/bin` is in your `PATH`:
 
-```bash
-rm ~/.local/bin/nfo
-rm -rf ~/.config/nfo
-```
-
-**Note:** Make sure `~/.local/bin` is in your PATH. Add this to your shell config if needed:
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-## Configuration
-
-The configuration file is located at `~/.config/nfo/config.conf`. You can customize what information to display and how it appears.
-
-### Available Display Options
-
-Add any of these to your `print_out()` function in the config file:
-
-| Function | Description | Example Output |
-|----------|-------------|----------------|
-| `nfo art` | Display ASCII art | Shows selected artwork |
-| `nfo host` | Username and hostname | `user@hostname` |
-| `nfo colors` | Color palette | Colored blocks |
-| `nfo os` | Operating system | `macOS 14.0` or `Ubuntu 22.04` |
-| `nfo kernel` | Kernel version | `Darwin 23.0.0` |
-| `nfo resolution` | Screen resolution | `1920x1080` |
-| `nfo up_time` | System uptime | `2 days, 5 hours` |
-| `nfo current_shell` | Current shell | `zsh 5.9` |
-| `nfo totalpackages` | Installed packages | `1,234 packages` |
-| `nfo total_memory` | Memory usage | `8.0 GiB / 16.0 GiB` |
-| `nfo cpu` | CPU information | `Apple M1 Pro` |
-| `nfo disk` | Disk usage | `256 GB / 512 GB (50%)` |
-| `nfo terminal` | Terminal emulator | `iTerm2` |
-| `nfo local_ip` | Local IP address | `192.168.1.100` |
-
-### ASCII Art Options
-
-Set the `ART` variable in your config:
-
-| Option | Description | Requirements |
-|--------|-------------|--------------|
-| `nfo` | Default nfo logo | None |
-| `key` | Keyboard ASCII art | None |
-| `file` | File/folder ASCII art | None |
-| `name` | Name-based ASCII art | None |
-| `toilet` | Custom text with toilet | `toilet` command installed |
-
-### Color Themes
-
-Set the `TINT` variable to one of:
-- `Magenta`
-- `Red` 
-- `Blue`
-- `Cyan`
-- `Yellow`
-- `Green`
-
-### Example Configuration
+## Usage
 
 ```bash
-# Basic configuration
-ART='nfo'
-TINT='Red'
-ascii_bold='True'
+nfo
+```
 
-# Custom output - add/remove/reorder as needed
+Configuration lives at `~/.config/nfo/config.conf`.
+
+The `print_out()` function controls what appears and in what order:
+
+```bash
 print_out() {
     nfo art
     nfo host
@@ -106,13 +47,54 @@ print_out() {
     nfo up_time
     nfo total_memory
     nfo cpu
+    nfo disk
+    nfo battery
     nfo colors
 }
 ```
 
-### Advanced Options
+Available entries:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `toilet_host` | Use toilet for hostname display | `False` |
-| `toilet_msg` | Message for toilet art | `this is nfo` |
+```text
+art host colors os kernel resolution up_time current_shell
+totalpackages total_memory cpu disk terminal local_ip battery
+```
+
+Config options:
+
+```bash
+ART='nfo'          # nfo, key, file, name, toilet
+TINT='Red'         # Magenta, Red, Blue, Cyan, Yellow, Green
+ascii_bold='True'
+toilet_host='False'
+toilet_msg='this is nfo'
+```
+
+`toilet` art and host rendering require the `toilet` command.
+
+## Development
+
+Run with the repo-local config and art files:
+
+```bash
+./nfo --super-secret-dev-mode
+```
+
+Run tests:
+
+```bash
+bats tests/integration.bats
+```
+
+## Uninstall
+
+```bash
+brew uninstall nfo
+```
+
+Manual install:
+
+```bash
+rm ~/.local/bin/nfo
+rm -rf ~/.config/nfo
+```
