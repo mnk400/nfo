@@ -7,6 +7,13 @@ Run with the repo-local `config.conf` and `art.sh` instead of the installed copi
 ./nfo --super-secret-dev-mode
 ```
 
+Check CLI help/version output:
+
+```bash
+./nfo --help
+./nfo --version
+```
+
 Run tests (requires [bats](https://github.com/bats-core/bats-core)):
 
 ```bash

@@ -52,6 +52,10 @@ jobs:
           # Copy files (excluding .git and .github)
           rsync -av --exclude='.git' --exclude='.github' --exclude='.DS_Store' . "/tmp/nfo-${VERSION}/"
 
+          # Stamp the release artifact with the computed version. Local/dev builds stay at 0.dev.
+          grep -q 'readonly VERSION="0.dev"' "/tmp/nfo-${VERSION}/nfo"
+          perl -0pi -e "s/readonly VERSION=\"0\\.dev\"/readonly VERSION=\"${VERSION}\"/" "/tmp/nfo-${VERSION}/nfo"
+
           # Create the archive
           cd /tmp
           tar -czf "$GITHUB_WORKSPACE/$ARCHIVE_NAME" "nfo-${VERSION}"

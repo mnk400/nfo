@@ -6,6 +6,7 @@
 # Global variables
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly OS="$(uname)"
+readonly VERSION="0.dev"
 
 # Color definitions
 RED='\033[0;31m'
@@ -25,6 +26,23 @@ NORMAL=""
 
 # Enable strict error handling after variable declarations
 set -euo pipefail
+
+show_usage() {
+    cat <<EOF
+nfo $VERSION
+
+Usage:
+  nfo [--help] [--version]
+
+Options:
+  -h, --help                  Show this help message
+  -v, --version               Show version information
+EOF
+}
+
+show_version() {
+    echo "nfo $VERSION"
+}
 
 # Initialize configuration
 init_config() {
@@ -79,9 +97,8 @@ setup_styling() {
 print_info() {
     local label="$1"
     local value="$2"
-    local spacing="${3:-\t\t}"
-    
-    echo -e "${TINT_SHADE}${BOLD}${label}:${NORMAL}${NC}${spacing}${value}"
+
+    printf "%b%-12s%b %s\n" "${TINT_SHADE}${BOLD}" "${label}:" "${NORMAL}${NC}" "$value"
 }
 
 # System information functions
@@ -211,7 +228,7 @@ get_uptime_info() {
             ;;
         Darwin)
             local boot_time now
-            boot_time="$(sysctl -n kern.boottime 2>/dev/null | awk '{print $4}' | tr -d ',')"
+            boot_time="$(sysctl -n kern.boottime 2>/dev/null | awk '{print $4}' | tr -d ',' || true)"
             now="$(date +%s)"
             if [[ -n "$boot_time" ]]; then
                 uptime_secs="$((now - boot_time))"
@@ -263,7 +280,7 @@ get_package_count() {
             count="unsupported"
             ;;
     esac
-    print_info "Packages" "$count" "\t"
+    print_info "Packages" "$count"
 }
 
 get_resolution_info() {
@@ -287,19 +304,19 @@ get_resolution_info() {
             ;;
     esac
     
-    print_info "Resolution" "$resolution" " \t"
+    print_info "Resolution" "$resolution"
 }
 
 get_disk_info() {
     local disk_info
     disk_info="$(df -h / | awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}')"
-    print_info "Disk Usage" "${disk_info:-unknown}" " \t"
+    print_info "Disk Usage" "${disk_info:-unknown}"
 }
 
 get_terminal_info() {
     local term_info
     term_info="${TERM_PROGRAM:-unknown}"
-    print_info "Terminal" "$term_info" " \t"
+    print_info "Terminal" "$term_info"
 }
 
 get_local_ip_info() {
@@ -316,7 +333,7 @@ get_local_ip_info() {
             local_ip="unsupported"
             ;;
     esac
-    print_info "Local IP" "${local_ip:-unknown}" " \t"
+    print_info "Local IP" "${local_ip:-unknown}"
 }
 
 get_battery_info() {
@@ -353,7 +370,7 @@ get_battery_info() {
     esac
 
     if [[ -n "$battery_str" ]]; then
-        print_info "Battery" "$battery_str" " \t"
+        print_info "Battery" "$battery_str"
     fi
 }
 
@@ -415,6 +432,24 @@ nfo() {
 
 # Main execution
 main() {
+    case "${1:-}" in
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        -v|--version)
+            show_version
+            exit 0
+            ;;
+        ""|--super-secret-dev-mode)
+            ;;
+        *)
+            echo "Error: Unknown option: $1" >&2
+            echo "Run 'nfo --help' for usage." >&2
+            exit 1
+            ;;
+    esac
+
     init_config "$@"
     setup_styling
     
