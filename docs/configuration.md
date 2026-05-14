@@ -6,14 +6,14 @@ control rendering, and a `print_out()` function that decides which lines appear 
 ## Options
 
 ```bash
-ART='nfo'              # nfo, key, file, name, toilet
+ART='nfo'              # nfo, key, file, name
 TINT='Red'             # Magenta, Red, Blue, Cyan, Yellow, Green
 ascii_bold='True'      # bold labels
 toilet_host='False'    # render the host line with toilet
-toilet_msg='this is nfo'
 ```
 
-`toilet` art and `toilet_host` require the [`toilet`](http://caca.zoy.org/wiki/toilet) command.
+`ART` resolves to `~/.config/nfo/art/<name>.txt` — drop new `.txt` files in that directory
+to add more art. `toilet_host` requires the [`toilet`](http://caca.zoy.org/wiki/toilet) command.
 
 ## `print_out()`
 

@@ -28,7 +28,7 @@ Manual:
 ```bash
 cp nfo ~/.local/bin/nfo
 mkdir -p ~/.config/nfo
-cp art.sh config.conf ~/.config/nfo/
+cp -r config.conf art ~/.config/nfo/
 chmod +x ~/.local/bin/nfo
 ```
 

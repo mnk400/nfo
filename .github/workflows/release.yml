@@ -129,7 +129,7 @@ jobs:
               bin.install "nfo"
 
               # Install config files to share directory
-              (share/"nfo").install "art.sh", "config.conf"
+              (share/"nfo").install "art", "config.conf"
             end
 
             def caveats
@@ -139,7 +139,7 @@ jobs:
 
                 To set up nfo, run:
                   mkdir -p ~/.config/nfo
-                  cp #{share}/nfo/art.sh ~/.config/nfo/
+                  cp -r #{share}/nfo/art ~/.config/nfo/
                   cp #{share}/nfo/config.conf ~/.config/nfo/
 
                 Or use the one-liner install script from the README.

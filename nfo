@@ -19,7 +19,7 @@ NC='\033[0m'
 
 # Configuration variables
 CONFIG_FILE=""
-ARTWORK_FILE=""
+ART_DIR=""
 TINT_SHADE=""
 BOLD=""
 NORMAL=""
@@ -46,28 +46,23 @@ show_version() {
 
 # Initialize configuration
 init_config() {
-    local config_dir artwork_dir
-    
+    local base_dir
+
     if [[ "${1:-}" == "--super-secret-dev-mode" ]]; then
         echo "Development mode enabled"
-        config_dir="$SCRIPT_DIR"
-        artwork_dir="$SCRIPT_DIR"
+        base_dir="$SCRIPT_DIR"
     else
-        config_dir="$HOME/.config/nfo"
-        artwork_dir="$HOME/.config/nfo"
+        base_dir="$HOME/.config/nfo"
     fi
-    
-    CONFIG_FILE="$config_dir/config.conf"
-    ARTWORK_FILE="$artwork_dir/art.sh"
-    
-    # Validate and source config files
+
+    CONFIG_FILE="$base_dir/config.conf"
+    ART_DIR="$base_dir/art"
+
     [[ -f "$CONFIG_FILE" ]] || { echo "Error: Config file not found at $CONFIG_FILE" >&2; exit 1; }
-    [[ -f "$ARTWORK_FILE" ]] || { echo "Error: Artwork file not found at $ARTWORK_FILE" >&2; exit 1; }
-    
-    # Temporarily disable strict error handling for sourcing files
+    [[ -d "$ART_DIR" ]]    || { echo "Error: Art directory not found at $ART_DIR" >&2; exit 1; }
+
     set +euo pipefail
     source "$CONFIG_FILE"
-    source "$ARTWORK_FILE"
     set -euo pipefail
 }
 
@@ -376,20 +371,12 @@ get_battery_info() {
 
 # Display functions
 show_art() {
-    case "${ART:-nfo}" in
-        nfo)     printf "%s\n\n" "${nfo_isometric:-}" ;;
-        key)     printf "%s\n\n" "${keyboard:-}" ;;
-        file)    printf "%s\n\n" "${file:-}" ;;
-        name)    printf "%s\n\n" "${name:-}" ;;
-        toilet)  
-            if command -v toilet >/dev/null 2>&1; then
-                toilet -f future --gay "${toilet_msg:-nfo}"
-            else
-                echo "toilet command not found"
-            fi
-            ;;
-        *)       echo "Unknown art type: ${ART}" ;;
-    esac
+    local art_path="$ART_DIR/${ART:-nfo}.txt"
+    if [[ ! -f "$art_path" ]]; then
+        echo "Art not found: ${ART:-nfo} (looked in $ART_DIR)" >&2
+        return 1
+    fi
+    printf '%s\n\n' "$(<"$art_path")"
 }
 
 show_host() {
