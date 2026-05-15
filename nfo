@@ -397,7 +397,7 @@ render() {
     if (( DEV_MODE )); then
         printf '\n%s> nfo - dev mode enabled%s\n\n' "$DIM" "$RESET"
     else
-        printf '\n%s> nfo%s\n\n' "$DIM" "$RESET"
+        printf '\n'
     fi
 
     local margin info_col
