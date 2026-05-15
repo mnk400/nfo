@@ -1,10 +1,9 @@
+# nfo
 <!-- site:strip-start -->
-<h3 align="left"><img src="https://i.imgur.com/9YIHT6C.png" alt="nfo" height="80px"></h3>
-
 > Minimal fetch program with customizable ASCII art.
 <!-- site:strip-end -->
 
-![](https://i.imgur.com/JyIAXzR.png)
+![](docs/screenshot.png)
 
 ## What is this
 
