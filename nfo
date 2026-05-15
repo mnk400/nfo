@@ -387,8 +387,12 @@ render() {
     local total=$art_h
     (( info_h > total )) && total=$info_h
 
-    local top_pad=0
-    (( info_h > art_h )) && top_pad=$(( (info_h - art_h) / 2 ))
+    local art_top_pad=0 info_top_pad=0
+    if (( info_h > art_h )); then
+        art_top_pad=$(( (info_h - art_h) / 2 ))
+    elif (( art_h > info_h )); then
+        info_top_pad=$(( (art_h - info_h) / 2 ))
+    fi
 
     if (( DEV_MODE )); then
         printf '\n%s> nfo - dev mode enabled%s\n\n' "$DIM" "$RESET"
@@ -400,15 +404,20 @@ render() {
     printf -v margin '%*s' "$LEFT_MARGIN" ""
     info_col=$(( LEFT_MARGIN + art_w + GAP ))
 
-    local idx art info i
+    local art_idx info_idx art info i
     for ((i=0; i<total; i++)); do
-        idx=$(( i - top_pad ))
-        if (( idx >= 0 && idx < art_h )); then
-            art="${art_lines[idx]}"
+        art_idx=$(( i - art_top_pad ))
+        if (( art_idx >= 0 && art_idx < art_h )); then
+            art="${art_lines[art_idx]}"
         else
             art=""
         fi
-        info="${info_lines[i]:-}"
+        info_idx=$(( i - info_top_pad ))
+        if (( info_idx >= 0 && info_idx < info_h )); then
+            info="${info_lines[info_idx]}"
+        else
+            info=""
+        fi
         if [[ -n "$info" ]]; then
             printf '%s%s\r\033[%dC%s\n' "$margin" "$art" "$info_col" "$info"
         else
