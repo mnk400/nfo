@@ -129,7 +129,7 @@ jobs:
               bin.install "nfo"
 
               # Install config files to share directory
-              (share/"nfo").install "art", "config.conf"
+              (share/"nfo").install "art", "nfo.conf"
             end
 
             def caveats
@@ -140,9 +140,11 @@ jobs:
                 To set up nfo, run:
                   mkdir -p ~/.config/nfo
                   cp -r #{share}/nfo/art ~/.config/nfo/
-                  cp #{share}/nfo/config.conf ~/.config/nfo/
+                  cp #{share}/nfo/nfo.conf ~/.config/nfo/
 
-                Or use the one-liner install script from the README.
+                Upgrading from a previous version? The config format and filename
+                changed (config.conf → nfo.conf). Copy the new nfo.conf above and
+                migrate your old print_out() into the new INFO_ROWS array.
               EOS
             end
 

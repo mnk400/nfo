@@ -1,30 +1,30 @@
 #!/bin/bash
 #
-# nfo - A minimal neofetch alternative
+# nfo: a minimal, pretty fetch program written in bash
 # Created by Manik
 
-# Global variables
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly OS="$(uname)"
 readonly VERSION="0.dev"
 
-# Color definitions
-RED='\033[0;31m'
-MAGENTA='\033[0;35m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+readonly LEFT_MARGIN=2
+readonly GAP=4
 
-# Configuration variables
+ACCENT=""
+DIM=""
+RESET=""
+
+# Config-loaded vars, declared with defaults so set -u stays happy
+ART="nfo"
+TINT="Cyan"
+DOTS="small"
+SHOW_HOST="True"
+INFO_ROWS=()
+
 CONFIG_FILE=""
 ART_DIR=""
-TINT_SHADE=""
-BOLD=""
-NORMAL=""
+DEV_MODE=0
 
-# Enable strict error handling after variable declarations
 set -euo pipefail
 
 show_usage() {
@@ -44,104 +44,87 @@ show_version() {
     echo "nfo $VERSION"
 }
 
-# Initialize configuration
 init_config() {
     local base_dir
 
     if [[ "${1:-}" == "--super-secret-dev-mode" ]]; then
-        echo "Development mode enabled"
+        DEV_MODE=1
         base_dir="$SCRIPT_DIR"
     else
         base_dir="$HOME/.config/nfo"
     fi
 
-    CONFIG_FILE="$base_dir/config.conf"
+    CONFIG_FILE="$base_dir/nfo.conf"
     ART_DIR="$base_dir/art"
 
-    [[ -f "$CONFIG_FILE" ]] || { echo "Error: Config file not found at $CONFIG_FILE" >&2; exit 1; }
-    [[ -d "$ART_DIR" ]]    || { echo "Error: Art directory not found at $ART_DIR" >&2; exit 1; }
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        echo "Error: Config file not found at $CONFIG_FILE" >&2
+        if [[ -f "$base_dir/config.conf" ]]; then
+            echo "Found a legacy config.conf — nfo's config format changed; copy the new nfo.conf default into $base_dir/" >&2
+        fi
+        exit 1
+    fi
+    [[ -d "$ART_DIR" ]] || { echo "Error: Art directory not found at $ART_DIR" >&2; exit 1; }
 
     set +euo pipefail
     source "$CONFIG_FILE"
     set -euo pipefail
 }
 
-# Set up text styling
 setup_styling() {
-    NORMAL="$(tput sgr0 2>/dev/null || echo '')"
-    
-    if [[ "${ascii_bold:-}" == "True" ]]; then
-        BOLD="$(tput bold 2>/dev/null || echo '')"
-    else
-        BOLD=""
-    fi
-    
-    # Tint colors
-    case "${TINT:-}" in
-        Magenta) TINT_SHADE="$MAGENTA" ;;
-        Red)     TINT_SHADE="$RED" ;;
-        Green)   TINT_SHADE="$GREEN" ;;
-        Yellow)  TINT_SHADE="$YELLOW" ;;
-        Blue)    TINT_SHADE="$BLUE" ;;
-        Cyan)    TINT_SHADE="$CYAN" ;;
-        *)       TINT_SHADE="$NC" ;;
+    RESET=$'\033[0m'
+    DIM=$'\033[2m'
+    case "${TINT:-Cyan}" in
+        Red)     ACCENT=$'\033[31m' ;;
+        Green)   ACCENT=$'\033[32m' ;;
+        Yellow)  ACCENT=$'\033[33m' ;;
+        Blue)    ACCENT=$'\033[34m' ;;
+        Magenta) ACCENT=$'\033[35m' ;;
+        Cyan)    ACCENT=$'\033[36m' ;;
+        *)       ACCENT=$'\033[36m' ;;
     esac
 }
 
-# Utility function for formatted output
-print_info() {
-    local label="$1"
-    local value="$2"
+# ----- data sources: each returns a value string, no label, no styling -----
 
-    printf "%b%-12s%b %s\n" "${TINT_SHADE}${BOLD}" "${label}:" "${NORMAL}${NC}" "$value"
-}
-
-# System information functions
-get_os_info() {
+get_os() {
     local result
-    
     case "$OS" in
         Linux)
             if [[ -f /etc/os-release ]]; then
+                set +u
                 source /etc/os-release
                 result="$NAME ${VERSION_ID:-}"
+                set -u
             else
-                result="Linux (unknown distribution)"
+                result="Linux"
             fi
             ;;
         Darwin)
-            local version
-            version="$(sw_vers -productVersion 2>/dev/null || echo 'unknown')"
-            result="macOS $version"
+            local v
+            v="$(sw_vers -productVersion 2>/dev/null || echo unknown)"
+            result="macOS $v"
             ;;
-        *)
-            result="$OS (unsupported)"
-            ;;
+        *) result="$OS" ;;
     esac
-    
-    # Check for WSL
     if [[ "$OS" == "Linux" ]] && grep -q microsoft /proc/version 2>/dev/null; then
         result="$result (WSL)"
     fi
-    
-    print_info "OS" "$result"
+    printf '%s' "$result"
 }
 
-get_kernel_info() {
-    local version
-    version="$(uname -r)"
-    
+get_krn() {
+    local v
+    v="$(uname -r)"
     case "$OS" in
-        Darwin) version="Darwin Kernel $version" ;;
-        Linux)  version="Linux $version" ;;
+        Darwin) printf 'Darwin %s' "$v" ;;
+        Linux)  printf 'Linux %s'  "$v" ;;
+        *)      printf '%s' "$v" ;;
     esac
-    
-    print_info "Kernel" "$version"
 }
 
-get_memory_info() {
-    local used_mb total_mb memory_str
-
+get_mem() {
+    local used_mb=0 total_mb=0
     case "$OS" in
         Linux)
             if [[ -f /proc/meminfo ]]; then
@@ -149,307 +132,308 @@ get_memory_info() {
                 local avail_mb
                 avail_mb="$(awk '/^MemAvailable:/ {print int($2/1024)}' /proc/meminfo)"
                 used_mb="$((total_mb - avail_mb))"
-            else
-                memory_str="unknown"
-            fi
+            else printf 'unknown'; return; fi
             ;;
         Darwin)
-            local page_size pages_free pages_inactive pages_speculative total_bytes
+            local page_size total_bytes free_pages free_mb
             page_size="$(sysctl -n hw.pagesize 2>/dev/null)" || page_size=4096
             total_bytes="$(sysctl -n hw.memsize 2>/dev/null)" || total_bytes=0
             total_mb="$((total_bytes / 1024 / 1024))"
-
-            # Get memory stats from vm_stat
-            local vm_output
-            vm_output="$(vm_stat 2>/dev/null)"
-            pages_free="$(echo "$vm_output" | awk '/Pages free:/ {gsub(/\./,"",$3); print $3}')"
-            pages_inactive="$(echo "$vm_output" | awk '/Pages inactive:/ {gsub(/\./,"",$3); print $3}')"
-            pages_speculative="$(echo "$vm_output" | awk '/Pages speculative:/ {gsub(/\./,"",$3); print $3}')"
-
-            local free_mb
-            free_mb="$(( (pages_free + pages_inactive + pages_speculative) * page_size / 1024 / 1024 ))"
+            free_pages="$(vm_stat 2>/dev/null | awk '
+                /Pages free:/        {gsub(/\./,"",$3); f=$3}
+                /Pages inactive:/    {gsub(/\./,"",$3); i=$3}
+                /Pages speculative:/ {gsub(/\./,"",$3); s=$3}
+                END {print f + i + s}')" || free_pages=0
+            free_mb="$(( free_pages * page_size / 1024 / 1024 ))"
             used_mb="$((total_mb - free_mb))"
             ;;
-        *)
-            memory_str="unsupported"
-            ;;
+        *) printf 'unknown'; return ;;
     esac
-
-    if [[ -z "${memory_str:-}" ]]; then
-        local total_gib used_gib
-        total_gib="$(awk "BEGIN {printf \"%.1f\", $total_mb/1024}")"
-        used_gib="$(awk "BEGIN {printf \"%.1f\", $used_mb/1024}")"
-        memory_str="${used_gib} GiB / ${total_gib} GiB"
-    fi
-
-    print_info "Memory" "$memory_str"
+    if (( total_mb <= 0 )); then printf 'unknown'; return; fi
+    awk "BEGIN {printf \"%.1f / %.1f GiB\", $used_mb/1024, $total_mb/1024}"
 }
 
-get_cpu_info() {
-    local cpu_info
-    
+get_cpu() {
+    local v=""
     case "$OS" in
         Linux)
-            cpu_info="$(lscpu 2>/dev/null | awk -F': ' '/Model name/ {print $2; exit}' | sed 's/^[[:space:]]*//')"
-            [[ -z "$cpu_info" ]] && cpu_info="$(cat /proc/cpuinfo 2>/dev/null | awk -F': ' '/model name/ {print $2; exit}' | sed 's/^[[:space:]]*//')"
-            ;;
-        Darwin)
-            cpu_info="$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo 'unknown')"
-            ;;
-        *)
-            cpu_info="unsupported"
-            ;;
-    esac
-    
-    print_info "CPU" "${cpu_info:-unknown}"
-}
-
-get_shell_info() {
-    local shell_info
-    shell_info="$("$SHELL" --version 2>/dev/null | head -1 | cut -d',' -f1 | awk '{print $1, $2}')"
-    print_info "Shell" "${shell_info:-$SHELL}"
-}
-
-get_uptime_info() {
-    local uptime_str uptime_secs
-
-    case "$OS" in
-        Linux)
-            if [[ -f /proc/uptime ]]; then
-                uptime_secs="$(awk '{print int($1)}' /proc/uptime)"
-            else
-                uptime_secs=0
+            v="$(lscpu 2>/dev/null | awk -F': ' '/Model name/ {print $2; exit}' | sed 's/^[[:space:]]*//')" || true
+            if [[ -z "$v" ]]; then
+                v="$(awk -F': ' '/model name/ {print $2; exit}' /proc/cpuinfo 2>/dev/null | sed 's/^[[:space:]]*//')" || true
             fi
             ;;
         Darwin)
-            local boot_time now
-            boot_time="$(sysctl -n kern.boottime 2>/dev/null | awk '{print $4}' | tr -d ',' || true)"
-            now="$(date +%s)"
-            if [[ -n "$boot_time" ]]; then
-                uptime_secs="$((now - boot_time))"
-            else
-                uptime_secs=0
-            fi
-            ;;
-        *)
-            uptime_secs=0
+            v="$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo unknown)"
             ;;
     esac
-
-    if [[ "$uptime_secs" -gt 0 ]]; then
-        local days hours mins
-        days="$((uptime_secs / 86400))"
-        hours="$(( (uptime_secs % 86400) / 3600 ))"
-        mins="$(( (uptime_secs % 3600) / 60 ))"
-        uptime_str="${days} days, ${hours} hours, ${mins} minutes"
-    else
-        uptime_str="unknown"
-    fi
-
-    print_info "Uptime" "$uptime_str"
+    printf '%s' "${v:-unknown}"
 }
 
-get_package_count() {
-    local count
-    
+get_up() {
+    local secs=0
+    case "$OS" in
+        Linux)
+            [[ -f /proc/uptime ]] && secs="$(awk '{print int($1)}' /proc/uptime)"
+            ;;
+        Darwin)
+            local bt
+            bt="$(sysctl -n kern.boottime 2>/dev/null | awk '{gsub(/,/,"",$4); print $4}')" || bt=""
+            [[ -n "$bt" ]] && secs="$(( $(date +%s) - bt ))"
+            ;;
+    esac
+    if (( secs <= 0 )); then printf 'unknown'; return; fi
+    local d h m
+    d=$((secs / 86400))
+    h=$(( (secs % 86400) / 3600 ))
+    m=$(( (secs % 3600) / 60 ))
+    if   (( d > 0 )); then printf '%dd %dh' "$d" "$h"
+    elif (( h > 0 )); then printf '%dh %dm' "$h" "$m"
+    else                   printf '%dm' "$m"
+    fi
+}
+
+get_sh() {
+    local v=""
+    v="$("$SHELL" --version 2>/dev/null | head -1 | cut -d',' -f1 | awk '{print $1, $2}')" || true
+    printf '%s' "${v:-$(basename "$SHELL")}"
+}
+
+get_pkg() {
+    local count=""
     case "$OS" in
         Linux)
             if command -v dpkg-query >/dev/null 2>&1; then
-                count="$(dpkg-query -f '${binary:Package}\n' -W 2>/dev/null | wc -l | tr -d ' ')"
+                count="$(dpkg-query -f '${binary:Package}\n' -W 2>/dev/null | wc -l | tr -d ' ') (dpkg)"
             elif command -v rpm >/dev/null 2>&1; then
-                count="$(rpm -qa 2>/dev/null | wc -l | tr -d ' ')"
+                count="$(rpm -qa 2>/dev/null | wc -l | tr -d ' ') (rpm)"
             elif command -v pacman >/dev/null 2>&1; then
-                count="$(pacman -Q 2>/dev/null | wc -l | tr -d ' ')"
-            else
-                count="unknown"
+                count="$(pacman -Q 2>/dev/null | wc -l | tr -d ' ') (pacman)"
             fi
             ;;
         Darwin)
             if command -v brew >/dev/null 2>&1; then
-                count="$(brew list --formula 2>/dev/null | wc -l | tr -d ' ')"
-            else
-                count="0 (brew not installed)"
+                count="$(brew list --formula 2>/dev/null | wc -l | tr -d ' ') (brew)"
             fi
             ;;
-        *)
-            count="unsupported"
-            ;;
     esac
-    print_info "Packages" "$count"
+    printf '%s' "${count:-unknown}"
 }
 
-get_resolution_info() {
-    local resolution
-    
+get_dsk() {
+    local v
+    v="$(df -k / 2>/dev/null | awk 'NR==2 {
+        total=$2; avail=$4; used=total-avail;
+        printf "%.0f / %.0f GiB", used/1024/1024, total/1024/1024
+    }')" || v=""
+    printf '%s' "${v:-unknown}"
+}
+
+get_res() {
+    local v=""
     case "$OS" in
         Linux)
             if command -v xdpyinfo >/dev/null 2>&1; then
-                resolution="$(timeout 2s xdpyinfo 2>/dev/null |
-                             awk '/dimensions:/ {printf sep $2; sep=", "}')"
+                v="$(timeout 2s xdpyinfo 2>/dev/null | awk '/dimensions:/ {printf sep $2; sep=", "}')" || true
             fi
-            [[ -z "$resolution" ]] && resolution="unknown"
             ;;
         Darwin)
-            resolution="$(system_profiler SPDisplaysDataType 2>/dev/null |
-                         awk '/Resolution:/ {printf sep $2 " x " $4; sep=", "}')"
-            [[ -z "$resolution" ]] && resolution="unknown"
-            ;;
-        *)
-            resolution="unsupported"
+            v="$(system_profiler SPDisplaysDataType 2>/dev/null | awk '/Resolution:/ {printf sep $2 " x " $4; sep=", "}')" || true
             ;;
     esac
-    
-    print_info "Resolution" "$resolution"
+    printf '%s' "${v:-unknown}"
 }
 
-get_disk_info() {
-    local disk_info
-    disk_info="$(df -h / | awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}')"
-    print_info "Disk Usage" "${disk_info:-unknown}"
+get_term() {
+    printf '%s' "${TERM_PROGRAM:-unknown}"
 }
 
-get_terminal_info() {
-    local term_info
-    term_info="${TERM_PROGRAM:-unknown}"
-    print_info "Terminal" "$term_info"
-}
-
-get_local_ip_info() {
-    local local_ip=""
+get_ip() {
+    local ip=""
     case "$OS" in
-        Linux)
-            local_ip="$(hostname -I 2>/dev/null | awk '{print $1}')" || true
-            ;;
-        Darwin)
-            local_ip="$(ipconfig getifaddr en0 2>/dev/null)" || \
-            local_ip="$(ipconfig getifaddr en1 2>/dev/null)" || true
-            ;;
-        *)
-            local_ip="unsupported"
-            ;;
+        Linux)  ip="$(hostname -I 2>/dev/null | awk '{print $1}')" || true ;;
+        Darwin) ip="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)" ;;
     esac
-    print_info "Local IP" "${local_ip:-unknown}"
+    printf '%s' "${ip:-unknown}"
 }
 
-get_battery_info() {
-    local battery_str=""
-
+get_bat() {
     case "$OS" in
         Darwin)
-            local batt_output
-            batt_output="$(pmset -g batt 2>/dev/null)"
-            if [[ "$batt_output" == *InternalBattery* ]]; then
-                local percent state
-                percent="$(grep -o -m 1 '[0-9]\+%' <<< "$batt_output")"
-                state="$(grep -oE -m 1 '(charging|discharging|charged|finishing charge)' <<< "$batt_output")"
-                case "$state" in
-                    charging|"finishing charge") state="Charging" ;;
-                    discharging) state="Discharging" ;;
-                    charged)     state="Full" ;;
-                    *)           state="Unknown" ;;
-                esac
-                battery_str="${percent} (${state})"
+            local out percent=""
+            out="$(pmset -g batt 2>/dev/null)" || out=""
+            if [[ "$out" == *InternalBattery* ]]; then
+                percent="$(grep -o -m 1 '[0-9]\+%' <<< "$out")" || percent=""
+                [[ -n "$percent" ]] && printf '%s' "$percent"
             fi
             ;;
         Linux)
-            local bat_path percent="" state=""
-            for bat_path in /sys/class/power_supply/BAT{0,1}; do
-                [[ -d "$bat_path" ]] && break
+            local bat_path="" candidate percent=""
+            for candidate in /sys/class/power_supply/BAT0 /sys/class/power_supply/BAT1; do
+                if [[ -d "$candidate" ]]; then bat_path="$candidate"; break; fi
             done
-            read -r percent < "$bat_path/capacity" 2>/dev/null || true
-            read -r state < "$bat_path/status" 2>/dev/null || true
-            if [[ -n "$percent" ]]; then
-                battery_str="${percent}% (${state:-Unknown})"
+            if [[ -n "$bat_path" && -r "$bat_path/capacity" ]]; then
+                read -r percent < "$bat_path/capacity" || true
+                [[ -n "$percent" ]] && printf '%s%%' "$percent"
             fi
             ;;
     esac
-
-    if [[ -n "$battery_str" ]]; then
-        print_info "Battery" "$battery_str"
-    fi
 }
 
-# Display functions
-show_art() {
-    local art_path="$ART_DIR/${ART:-nfo}.txt"
-    if [[ ! -f "$art_path" ]]; then
-        echo "Art not found: ${ART:-nfo} (looked in $ART_DIR)" >&2
-        return 1
-    fi
-    printf '%s\n\n' "$(<"$art_path")"
+get_host_line() {
+    local h
+    h="$(hostname -s 2>/dev/null || echo host)"
+    printf '%s@%s' "${USER:-user}" "$h"
 }
 
-show_host() {
-    local hostname_val="${HOSTNAME:-$(hostname 2>/dev/null || echo 'unknown')}"
-    if [[ "${toilet_host:-}" == "True" ]] && command -v toilet >/dev/null 2>&1; then
-        toilet -f future --gay "${USER}@${hostname_val}"
-    else
-        echo -e "${TINT_SHADE}${BOLD}${USER}${NC}@${TINT_SHADE}${BOLD}${hostname_val}${NC}"
-    fi
-}
+# ----- composition -----
 
-show_colors() {
-    echo -e "${RED}▄${NC} ${MAGENTA}▄${NC} ${YELLOW}▄${NC} ${GREEN}▄${NC} ${CYAN}▄${NC} ${BLUE}▄${NC}"
-    echo -e "${RED}▀${NC} ${MAGENTA}▀${NC} ${YELLOW}▀${NC} ${GREEN}▀${NC} ${CYAN}▀${NC} ${BLUE}▀${NC}"
-}
-
-# Main execution function
-nfo() {
-    local func_name="$1"
-    
-    case "$func_name" in
-        art)         show_art ;;
-        host)        show_host ;;
-        colors)      show_colors ;;
-        os)          get_os_info ;;
-        kernel)      get_kernel_info ;;
-        resolution)  get_resolution_info ;;
-        up_time)     get_uptime_info ;;
-        current_shell) get_shell_info ;;
-        totalpackages) get_package_count ;;
-        total_memory) get_memory_info ;;
-        cpu)         get_cpu_info ;;
-        disk)        get_disk_info ;;
-        terminal)    get_terminal_info ;;
-        local_ip)    get_local_ip_info ;;
-        battery)     get_battery_info ;;
-        *)           echo "Unknown function: $func_name" >&2 ;;
+build_row() {
+    local key="$1" value
+    case "$key" in
+        os)   value="$(get_os)"   ;;
+        krn)  value="$(get_krn)"  ;;
+        up)   value="$(get_up)"   ;;
+        sh)   value="$(get_sh)"   ;;
+        pkg)  value="$(get_pkg)"  ;;
+        mem)  value="$(get_mem)"  ;;
+        cpu)  value="$(get_cpu)"  ;;
+        dsk)  value="$(get_dsk)"  ;;
+        bat)  value="$(get_bat)"  ;;
+        res)  value="$(get_res)"  ;;
+        term) value="$(get_term)" ;;
+        ip)   value="$(get_ip)"   ;;
+        *)    echo "Unknown row: $key" >&2; return 1 ;;
     esac
+    [[ -z "$value" ]] && return 1
+    printf '%s%3s%s %s·%s %s' "$ACCENT" "$key" "$RESET" "$DIM" "$RESET" "$value"
 }
 
-# Main execution
+build_dots() {
+    local char spacing
+    case "${DOTS:-small}" in
+        small)  char='•'; spacing='  ' ;;
+        medium) char='●'; spacing=' '  ;;
+        square) char='▪'; spacing='  ' ;;
+        none)   return ;;
+        *)      char='•'; spacing='  ' ;;
+    esac
+    local out="" c esc=$'\033'
+    for c in 31 32 33 34 35 36; do
+        out+="${esc}[${c}m${char}${esc}[0m${spacing}"
+    done
+    printf '%s' "${out%"$spacing"}"
+}
+
+render() {
+    local art_file="$ART_DIR/${ART:-nfo}.txt"
+    [[ -f "$art_file" ]] || { echo "Error: Art not found: ${ART:-nfo} (looked in $ART_DIR)" >&2; return 1; }
+
+    local -a art_lines=() info_lines=()
+    local line override_cols=0 in_header=1
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if (( in_header )) && [[ "$line" =~ ^[[:space:]]*# ]]; then
+            if [[ "$line" =~ ^[[:space:]]*#[[:space:]]*cols:[[:space:]]*([0-9]+) ]]; then
+                override_cols="${BASH_REMATCH[1]}"
+            fi
+            continue
+        fi
+        in_header=0
+        art_lines+=("$line")
+    done < "$art_file"
+    local last
+    while (( ${#art_lines[@]} > 0 )); do
+        last=$(( ${#art_lines[@]} - 1 ))
+        [[ -z "${art_lines[$last]}" ]] || break
+        unset "art_lines[$last]"
+    done
+
+    local art_w=0 al
+    if (( override_cols > 0 )); then
+        art_w=$override_cols
+    else
+        for al in "${art_lines[@]}"; do
+            (( ${#al} > art_w )) && art_w=${#al}
+        done
+    fi
+
+    if [[ "${SHOW_HOST:-True}" == "True" ]]; then
+        local host_str rule
+        host_str="$(get_host_line)"
+        printf -v rule '%*s' "${#host_str}" ''
+        rule="${rule// /─}"
+        info_lines+=("${ACCENT}${host_str}${RESET}")
+        info_lines+=("${DIM}${rule}${RESET}")
+        info_lines+=("")
+    fi
+
+    if (( ${#INFO_ROWS[@]} > 0 )); then
+        local row built
+        for row in "${INFO_ROWS[@]}"; do
+            if built="$(build_row "$row")"; then
+                info_lines+=("$built")
+            fi
+        done
+    fi
+
+    local dots
+    dots="$(build_dots)"
+    if [[ -n "$dots" ]]; then
+        info_lines+=("")
+        info_lines+=("$dots")
+    fi
+
+    local art_h=${#art_lines[@]}
+    local info_h=${#info_lines[@]}
+    local total=$art_h
+    (( info_h > total )) && total=$info_h
+
+    local top_pad=0
+    (( info_h > art_h )) && top_pad=$(( (info_h - art_h) / 2 ))
+
+    if (( DEV_MODE )); then
+        printf '\n%s> nfo - dev mode enabled%s\n\n' "$DIM" "$RESET"
+    else
+        printf '\n%s> nfo%s\n\n' "$DIM" "$RESET"
+    fi
+
+    local margin info_col
+    printf -v margin '%*s' "$LEFT_MARGIN" ""
+    info_col=$(( LEFT_MARGIN + art_w + GAP ))
+
+    local idx art info i
+    for ((i=0; i<total; i++)); do
+        idx=$(( i - top_pad ))
+        if (( idx >= 0 && idx < art_h )); then
+            art="${art_lines[idx]}"
+        else
+            art=""
+        fi
+        info="${info_lines[i]:-}"
+        if [[ -n "$info" ]]; then
+            printf '%s%s\r\033[%dC%s\n' "$margin" "$art" "$info_col" "$info"
+        else
+            printf '%s%s\n' "$margin" "$art"
+        fi
+    done
+
+    printf '\n'
+}
+
 main() {
     case "${1:-}" in
-        -h|--help)
-            show_usage
-            exit 0
-            ;;
-        -v|--version)
-            show_version
-            exit 0
-            ;;
-        ""|--super-secret-dev-mode)
-            ;;
-        *)
-            echo "Error: Unknown option: $1" >&2
-            echo "Run 'nfo --help' for usage." >&2
-            exit 1
-            ;;
+        -h|--help)    show_usage; exit 0 ;;
+        -v|--version) show_version; exit 0 ;;
+        ""|--super-secret-dev-mode) ;;
+        *) echo "Error: Unknown option: $1" >&2
+           echo "Run 'nfo --help' for usage." >&2
+           exit 1 ;;
     esac
 
     init_config "$@"
     setup_styling
-    
-    # Execute the print_out function from config
-    if declare -f print_out >/dev/null; then
-        print_out
-    else
-        echo "Error: print_out function not found in config" >&2
-        exit 1
-    fi
+    render
 }
 
-# Run main function if script is executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi

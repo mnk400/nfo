@@ -1,46 +1,53 @@
 # Configuration
 
-nfo reads its config from `~/.config/nfo/config.conf`. Two things live there: the options that
-control rendering, and a `print_out()` function that decides which lines appear and in what order.
+nfo reads its config from `~/.config/nfo/nfo.conf`. The file defines a handful of options
+plus an `INFO_ROWS` array that controls which info rows appear in the right-hand column
+and in what order.
 
 ## Options
 
 ```bash
-ART='nfo'              # nfo, key, file, name
-TINT='Red'             # Magenta, Red, Blue, Cyan, Yellow, Green
-ascii_bold='True'      # bold labels
-toilet_host='False'    # render the host line with toilet
+ART='nfo'              # art piece — resolves to art/<ART>.txt
+TINT='Cyan'            # accent color — Red, Green, Yellow, Blue, Magenta, Cyan
+DOTS='small'           # color preview row — small, medium, square, none
+SHOW_HOST='True'       # show user@host header above the rows
 ```
 
 `ART` resolves to `~/.config/nfo/art/<name>.txt` — drop new `.txt` files in that directory
-to add more art. `toilet_host` requires the [`toilet`](http://caca.zoy.org/wiki/toilet) command.
+to add more art.
 
-## `print_out()`
-
-The function is called once per run. Each `nfo <name>` call emits a line.
+## `INFO_ROWS`
 
 ```bash
-print_out() {
-    nfo art
-    nfo host
-    nfo os
-    nfo kernel
-    nfo up_time
-    nfo total_memory
-    nfo cpu
-    nfo disk
-    nfo battery
-    nfo colors
-}
+INFO_ROWS=(
+    os
+    krn
+    up
+    sh
+    pkg
+    mem
+    cpu
+    dsk
+    bat
+)
 ```
 
-Reorder, comment out, or remove entries to taste.
+Reorder, comment out, or remove entries to taste. Battery is skipped automatically on
+machines without a battery.
 
-## Available entries
+## Available rows
 
 ```text
-art            host           colors         os
-kernel         resolution     up_time        current_shell
-totalpackages  total_memory   cpu            disk
-terminal       local_ip       battery
+os     OS name and version
+krn    kernel name and version
+up     system uptime
+sh     current shell
+pkg    installed package count
+mem    used / total memory
+cpu    CPU model
+dsk    used / total disk for /
+bat    battery percentage
+res    display resolution
+term   terminal program
+ip     local IP address
 ```

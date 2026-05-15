@@ -28,7 +28,7 @@ Manual:
 ```bash
 cp nfo ~/.local/bin/nfo
 mkdir -p ~/.config/nfo
-cp -r config.conf art ~/.config/nfo/
+cp -r nfo.conf art ~/.config/nfo/
 chmod +x ~/.local/bin/nfo
 ```
 
@@ -49,23 +49,19 @@ rm ~/.local/bin/nfo && rm -rf ~/.config/nfo
 nfo
 ```
 
-Config lives at `~/.config/nfo/config.conf`. To change what shows up, edit the `print_out()`
-function:
+Config lives at `~/.config/nfo/nfo.conf`. To change what shows up, edit `INFO_ROWS`:
 
 ```bash
-print_out() {
-    nfo art
-    nfo host
-    nfo os
-    nfo up_time
-    nfo total_memory
-    nfo cpu
-    nfo battery
-    nfo colors
-}
+INFO_ROWS=(
+    os
+    krn
+    up
+    mem
+    cpu
+)
 ```
 
 ## Documentation
 
-- [Configuration](./docs/configuration.md) — options, `print_out()`, available entries
+- [Configuration](./docs/configuration.md) — options, `INFO_ROWS`, available rows
 - [Development](./docs/development.md) — dev mode, tests
