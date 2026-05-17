@@ -138,16 +138,14 @@ jobs:
 
             def caveats
               <<~EOS
-                Configuration files have been installed to:
-                  #{share}/nfo
+                On first run, nfo will copy default config and art into:
+                  ~/.config/nfo/
 
-                To set up nfo, run:
-                  mkdir -p ~/.config/nfo
-                  cp -r #{share}/nfo/art ~/.config/nfo/
-                  cp #{share}/nfo/nfo.conf ~/.config/nfo/
+                Edit ~/.config/nfo/nfo.conf to customize.
 
-                Upgrading from a previous version? The config format and filename
-                changed (config.conf → nfo.conf). Copy the new nfo.conf above and
+                Upgrading from a pre-nfo.conf version? The config format and
+                filename changed (config.conf → nfo.conf). Remove the old
+                ~/.config/nfo/config.conf, let nfo recreate the defaults, then
                 migrate your old print_out() into the new INFO_ROWS array.
               EOS
             end

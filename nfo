@@ -44,6 +44,37 @@ show_version() {
     echo "nfo $VERSION"
 }
 
+find_defaults_dir() {
+    # Locate the directory holding the shipped nfo.conf + art/ defaults.
+    # Covers brew (bin/nfo + share/nfo), tarball installs (bin/nfo + share/nfo),
+    # and running directly from a source checkout (script_dir contains both).
+    local candidates=(
+        "$SCRIPT_DIR/../share/nfo"
+        "$SCRIPT_DIR"
+    )
+    local dir
+    for dir in "${candidates[@]}"; do
+        if [[ -f "$dir/nfo.conf" && -d "$dir/art" ]]; then
+            (cd "$dir" && pwd)
+            return 0
+        fi
+    done
+    return 1
+}
+
+bootstrap_user_config() {
+    local base_dir="$1" defaults_dir
+    if ! defaults_dir="$(find_defaults_dir)"; then
+        return 1
+    fi
+
+    mkdir -p "$base_dir"
+    [[ -f "$base_dir/nfo.conf" ]] || cp "$defaults_dir/nfo.conf" "$base_dir/nfo.conf"
+    [[ -d "$base_dir/art" ]] || cp -R "$defaults_dir/art" "$base_dir/art"
+
+    echo "nfo: initialized config at $base_dir" >&2
+}
+
 init_config() {
     local base_dir
 
@@ -57,11 +88,16 @@ init_config() {
     CONFIG_FILE="$base_dir/nfo.conf"
     ART_DIR="$base_dir/art"
 
-    if [[ ! -f "$CONFIG_FILE" ]]; then
-        echo "Error: Config file not found at $CONFIG_FILE" >&2
+    if (( ! DEV_MODE )) && { [[ ! -f "$CONFIG_FILE" ]] || [[ ! -d "$ART_DIR" ]]; }; then
         if [[ -f "$base_dir/config.conf" ]]; then
             echo "Found a legacy config.conf — nfo's config format changed; copy the new nfo.conf default into $base_dir/" >&2
+            exit 1
         fi
+        bootstrap_user_config "$base_dir" || true
+    fi
+
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        echo "Error: Config file not found at $CONFIG_FILE" >&2
         exit 1
     fi
     [[ -d "$ART_DIR" ]] || { echo "Error: Art directory not found at $ART_DIR" >&2; exit 1; }
