@@ -8,28 +8,27 @@ nfo is a minimal, lightweight Neofetch alternative written entirely in Bash. It 
 
 ## Development
 
-Run in dev mode (uses local `config.conf` and `art/` instead of `~/.config/nfo/`):
+Run in dev mode (uses local `nfo.conf` and `art/` instead of `~/.config/nfo/`):
 ```bash
 ./nfo --super-secret-dev-mode
 ```
 
-Run tests (requires [bats](https://github.com/bats-core/bats-core)):
-```bash
-bats tests/integration.bats
-```
-
 Install locally:
 ```bash
-cp nfo ~/.local/bin/nfo && mkdir -p ~/.config/nfo && cp -r config.conf art ~/.config/nfo/ && chmod +x ~/.local/bin/nfo
+cp nfo ~/.local/bin/nfo && mkdir -p ~/.config/nfo && cp -r nfo.conf art ~/.config/nfo/ && chmod +x ~/.local/bin/nfo
 ```
 
 ## Architecture
 
-- **`nfo`** — the main script. Contains all system info gathering (`get_*_info`), display functions (`show_*`), config loading (`init_config`), and styling (`setup_styling`). The `nfo()` function acts as a dispatcher, routing string names to functions. Entry point is `main()`.
-- **`config.conf`** — user configuration. Defines art style, color theme, and a `print_out()` function that controls which info lines are displayed and in what order.
-- **`art/`** — directory of plain-text ASCII art files. Each `.txt` file is a single art piece; `ART='foo'` in config loads `art/foo.txt`. Adding new art is just dropping a file in.
+- **`nfo`** — the main script. `get_*` functions return raw values; `build_row` formats them; `render()` composes art (left) and info column (right) into a single side-by-side block with the host header on top and color-dot row on the bottom.
+- **`nfo.conf`** — user configuration. Declares `ART`, `TINT`, `DOTS`, `SHOW_HOST`, and an `INFO_ROWS` array listing which rows to render and in what order.
+- **`art/`** — directory of plain-text ASCII art files. `ART='foo'` loads `art/foo.txt`.
 
-**Program flow:** `main()` → `init_config()` (loads config, locates art dir) → `setup_styling()` (colors) → `print_out()` (from config, calls `nfo <name>` for each line) → dispatcher routes to `show_*`/`get_*` functions → `show_art` reads `art/<ART>.txt` → formatted output.
+**Program flow:** `main()` → `init_config()` (loads config, locates art dir) → `setup_styling()` (raw ANSI accent + dim) → `render()` (reads art, builds info_lines, vertically centers art against info, prints side-by-side).
+
+## Bash compatibility
+
+The script targets bash 3.2 (macOS system bash). Avoid `mapfile`, negative array indices (`${arr[-1]}`), associative arrays, and any other bash 4+ features.
 
 ## Platform Handling
 
