@@ -16,6 +16,19 @@ SHOW_HOST='True'       # show user@host header above the rows
 `ART` resolves to `~/.config/nfo/art/<name>.txt` — drop new `.txt` files in that directory
 to add more art.
 
+## Random art
+
+`ART` also accepts a rotation, re-rolled on every run:
+
+```bash
+ART='random'         # any piece in the art directory
+ART=(cat flower)     # any piece from this list
+```
+
+Every name in a list is checked up front, so a typo fails on every run rather than only on
+the runs that happen to pick it. `random` only works on its own — putting it inside a list
+is an error.
+
 ## `INFO_ROWS`
 
 ```bash

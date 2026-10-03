@@ -360,9 +360,59 @@ build_dots() {
     printf '%s' "${out%"$spacing"}"
 }
 
+resolve_art() {
+    # Turn the configured ART into the name of an existing art piece.
+    #   ART=(cat flower) -> random pick from the list
+    #   ART='random'     -> random pick from every .txt in ART_DIR
+    #   ART='nfo'        -> used as-is
+    # Unset/empty falls back to 'nfo'.
+
+    # The :- default keeps bash 3.2's set -u quiet when ART is a plain scalar
+    # or an empty array (a bare "${ART[@]}" is "unbound" in both cases).
+    local -a pool=("${ART[@]:-nfo}")
+
+    if (( ${#pool[@]} == 1 )); then
+        case "${pool[0]}" in
+            "")
+                # bash 3.2 lets ART='' through the :- above
+                pool=("nfo")
+                ;;
+            random)
+                pool=()
+                local f
+                for f in "$ART_DIR"/*.txt; do
+                    [[ -f "$f" ]] || continue
+                    f="${f##*/}"
+                    pool+=("${f%.txt}")
+                done
+                if (( ${#pool[@]} == 0 )); then
+                    echo "Error: ART='random' but no art found in $ART_DIR" >&2
+                    return 1
+                fi
+                ;;
+        esac
+    fi
+
+    # Validate every entry before picking, so a bad name fails every run
+    # instead of only the runs that happen to land on it.
+    local name
+    for name in "${pool[@]}"; do
+        [[ -f "$ART_DIR/$name.txt" ]] && continue
+        if [[ "$name" == "random" ]]; then
+            echo "Error: 'random' can't be part of an ART list; use ART='random' on its own" >&2
+        else
+            echo "Error: Art not found: $name (looked in $ART_DIR)" >&2
+        fi
+        return 1
+    done
+
+    printf '%s' "${pool[$(( RANDOM % ${#pool[@]} ))]}"
+}
+
 render() {
-    local art_file="$ART_DIR/${ART:-nfo}.txt"
-    [[ -f "$art_file" ]] || { echo "Error: Art not found: ${ART:-nfo} (looked in $ART_DIR)" >&2; return 1; }
+    local art_name art_file
+    art_name="$(resolve_art)" || return 1
+    art_file="$ART_DIR/$art_name.txt"
 
     local -a art_lines=() info_lines=()
     local line override_cols=0 in_header=1

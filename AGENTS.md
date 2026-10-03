@@ -22,13 +22,20 @@ cp nfo ~/.local/bin/nfo && mkdir -p ~/.config/nfo && cp -r nfo.conf art ~/.confi
 
 - **`nfo`** — the main script. `get_*` functions return raw values; `build_row` formats them; `render()` composes art (left) and info column (right) into a single side-by-side block with the host header on top and color-dot row on the bottom.
 - **`nfo.conf`** — user configuration. Declares `ART`, `TINT`, `DOTS`, `SHOW_HOST`, and an `INFO_ROWS` array listing which rows to render and in what order.
-- **`art/`** — directory of plain-text ASCII art files. `ART='foo'` loads `art/foo.txt`.
+- **`art/`** — directory of plain-text ASCII art files. `ART='foo'` loads `art/foo.txt`. `resolve_art()` also accepts `ART='random'` (any piece in the art dir) or `ART=(a b)` (a list), re-rolled per run.
 
 **Program flow:** `main()` → `init_config()` (loads config, locates art dir) → `setup_styling()` (raw ANSI accent + dim) → `render()` (reads art, builds info_lines, vertically centers art against info, prints side-by-side).
 
 ## Bash compatibility
 
 The script targets bash 3.2 (macOS system bash). Avoid `mapfile`, negative array indices (`${arr[-1]}`), associative arrays, and any other bash 4+ features.
+
+Under `set -u`, bash 3.2 also errors on:
+- `${#VAR[@]}` / `"${VAR[@]}"` when `VAR` holds a plain scalar (bash 4+ returns 1 / the value)
+- `"${arr[@]}"` when `arr` is an empty array (`${#arr[@]}` on an empty array is fine)
+
+Config vars that accept either a scalar or a list (e.g. `ART`) must therefore be read as
+`"${VAR[@]:-default}"` — the `:-` suppresses the unbound error. See `resolve_art()`.
 
 ## Platform Handling
 
